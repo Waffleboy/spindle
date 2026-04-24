@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spindle — Logo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=Instrument+Serif:ital@0;1&display=swap');
+
+  :root {
+    --bg: #0a0a0c;
+    --bg-card: #111114;
+    --border: #1e1e24;
+    --text-primary: #e8e6e1;
+    --text-secondary: #7a7872;
+    --text-muted: #4a4944;
+    --accent-thread: #c49a6c;
+    --accent-copper: #b87333;
+    --accent-warm: #d4a574;
+    --accent-rose: #c47a7a;
+    --accent-teal: #6aaa9c;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .grain {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 80px 40px;
+  }
+
+  /* Hero section */
+  .hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 48px;
+    margin-bottom: 120px;
+  }
+
+  .logo-container {
+    position: relative;
+    width: 280px;
+    height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .logo-glow {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(196,154,108,0.12) 0%, transparent 70%);
+    filter: blur(40px);
+    animation: glow-pulse 4s ease-in-out infinite;
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.15); }
+  }
+
+  .logo-svg {
+    position: relative;
+    z-index: 2;
+    filter: drop-shadow(0 0 30px rgba(196,154,108,0.15));
+  }
+
+  .logo-svg .thread {
+    stroke-dasharray: 300;
+    stroke-dashoffset: 300;
+    animation: draw-thread 2s ease-out forwards;
+  }
+
+  .logo-svg .thread:nth-child(1) { animation-delay: 0.1s; }
+  .logo-svg .thread:nth-child(2) { animation-delay: 0.25s; }
+  .logo-svg .thread:nth-child(3) { animation-delay: 0.4s; }
+  .logo-svg .thread:nth-child(4) { animation-delay: 0.55s; }
+  .logo-svg .thread:nth-child(5) { animation-delay: 0.7s; }
+  .logo-svg .thread:nth-child(6) { animation-delay: 0.85s; }
+
+  .logo-svg .spindle-core {
+    opacity: 0;
+    animation: fade-core 1s ease-out 1.2s forwards;
+  }
+
+  .logo-svg .node {
+    opacity: 0;
+    animation: pop-node 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  .logo-svg .node:nth-child(1) { animation-delay: 1.4s; }
+  .logo-svg .node:nth-child(2) { animation-delay: 1.5s; }
+  .logo-svg .node:nth-child(3) { animation-delay: 1.6s; }
+  .logo-svg .node:nth-child(4) { animation-delay: 1.7s; }
+  .logo-svg .node:nth-child(5) { animation-delay: 1.8s; }
+
+  @keyframes draw-thread {
+    to { stroke-dashoffset: 0; }
+  }
+
+  @keyframes fade-core {
+    to { opacity: 1; }
+  }
+
+  @keyframes pop-node {
+    0% { opacity: 0; transform: scale(0); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  .hero-text {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .wordmark {
+    font-family: 'Instrument Serif', serif;
+    font-size: 56px;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    color: var(--text-primary);
+    opacity: 0;
+    animation: fade-up 0.8s ease-out 1.6s forwards;
+  }
+
+  .tagline {
+    font-size: 15px;
+    font-weight: 300;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    opacity: 0;
+    animation: fade-up 0.8s ease-out 1.9s forwards;
+  }
+
+  @keyframes fade-up {
+    0% { opacity: 0; transform: translateY(12px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Variations */
+  .section-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+  }
+
+  .section-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 300;
+    letter-spacing: 0.02em;
+    margin-bottom: 48px;
+  }
+
+  .variations {
+    margin-bottom: 120px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 48px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    opacity: 0;
+    animation: fade-up 0.6s ease-out forwards;
+  }
+
+  .card:nth-child(1) { animation-delay: 2.2s; }
+  .card:nth-child(2) { animation-delay: 2.35s; }
+  .card:nth-child(3) { animation-delay: 2.5s; }
+
+  .card:hover {
+    border-color: rgba(196,154,108,0.25);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(196,154,108,0.08);
+  }
+
+  .card-label {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .card-bg-light {
+    background: #f4f2ed;
+    border-color: #e0ddd6;
+  }
+
+  .card-bg-light .card-label {
+    color: #8a877e;
+  }
+
+  .card-bg-light:hover {
+    border-color: rgba(184, 115, 51, 0.35);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 0 0 1px rgba(184,115,51,0.12);
+  }
+
+  /* Lockup section */
+  .lockups {
+    margin-bottom: 120px;
+  }
+
+  .lockup-row {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .lockup-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 48px 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    opacity: 0;
+    animation: fade-up 0.6s ease-out 2.6s forwards;
+    transition: border-color 0.3s ease;
+  }
+
+  .lockup-top {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .lockup-card:nth-child(2) {
+    animation-delay: 2.75s;
+  }
+
+  .lockup-card:hover {
+    border-color: rgba(196,154,108,0.25);
+  }
+
+  .lockup-wordmark {
+    font-family: 'Instrument Serif', serif;
+    font-size: 38px;
+    font-weight: 400;
+    letter-spacing: 0.03em;
+    color: var(--text-primary);
+  }
+
+  .lockup-divider {
+    width: 1px;
+    height: 36px;
+    background: var(--border);
+  }
+
+  .lockup-desc {
+    font-size: 13px;
+    font-weight: 300;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .lockup-card-light {
+    background: #f4f2ed;
+    border-color: #e0ddd6;
+  }
+
+  .lockup-card-light .lockup-wordmark { color: #1a1a1c; }
+  .lockup-card-light .lockup-divider { background: #ccc8bf; }
+  .lockup-card-light .lockup-desc { color: #6a675e; }
+
+  .lockup-card-light:hover {
+    border-color: rgba(184,115,51,0.35);
+  }
+
+  /* Color palette */
+  .palette {
+    margin-bottom: 80px;
+  }
+
+  .swatches {
+    display: flex;
+    gap: 16px;
+    opacity: 0;
+    animation: fade-up 0.6s ease-out 2.9s forwards;
+  }
+
+  .swatch {
+    flex: 1;
+    aspect-ratio: 1;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 14px;
+    transition: transform 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .swatch:hover {
+    transform: translateY(-4px);
+  }
+
+  .swatch-name {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  .swatch-hex {
+    font-size: 12px;
+    font-family: 'DM Sans', monospace;
+    opacity: 0.7;
+  }
+
+  .swatch-thread { background: var(--accent-thread); color: #1a1108; }
+  .swatch-copper { background: var(--accent-copper); color: #1a1108; }
+  .swatch-warm { background: var(--accent-warm); color: #1a1108; }
+  .swatch-rose { background: var(--accent-rose); color: #1a0e0e; }
+  .swatch-teal { background: var(--accent-teal); color: #0a1a17; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 40px 0;
+    border-top: 1px solid var(--border);
+    opacity: 0;
+    animation: fade-up 0.6s ease-out 3.1s forwards;
+  }
+
+  .footer p {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 300;
+    letter-spacing: 0.04em;
+  }
+
+  @media (max-width: 768px) {
+    .grid { grid-template-columns: 1fr; }
+    .wordmark { font-size: 42px; }
+    .page { padding: 48px 24px; }
+    .swatches { flex-wrap: wrap; }
+    .swatch { min-width: calc(50% - 12px); }
+  }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<div class="page">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="logo-container">
+      <div class="logo-glow"></div>
+      <svg class="logo-svg" width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="threadGrad1" x1="30" y1="40" x2="100" y2="100">
+            <stop offset="0%" stop-color="#c49a6c" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#c49a6c" stop-opacity="1"/>
+          </linearGradient>
+          <linearGradient id="threadGrad2" x1="170" y1="35" x2="100" y2="100">
+            <stop offset="0%" stop-color="#d4a574" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#d4a574" stop-opacity="1"/>
+          </linearGradient>
+          <linearGradient id="threadGrad3" x1="20" y1="120" x2="100" y2="100">
+            <stop offset="0%" stop-color="#b87333" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#b87333" stop-opacity="1"/>
+          </linearGradient>
+          <linearGradient id="threadGrad4" x1="180" y1="130" x2="100" y2="100">
+            <stop offset="0%" stop-color="#c49a6c" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#c49a6c" stop-opacity="1"/>
+          </linearGradient>
+          <linearGradient id="threadGrad5" x1="55" y1="180" x2="100" y2="100">
+            <stop offset="0%" stop-color="#6aaa9c" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#6aaa9c" stop-opacity="0.9"/>
+          </linearGradient>
+          <linearGradient id="threadGrad6" x1="150" y1="185" x2="100" y2="100">
+            <stop offset="0%" stop-color="#c47a7a" stop-opacity="0.25"/>
+            <stop offset="100%" stop-color="#c47a7a" stop-opacity="0.9"/>
+          </linearGradient>
+          <radialGradient id="coreGrad" cx="100" cy="100" r="18">
+            <stop offset="0%" stop-color="#c49a6c" stop-opacity="1"/>
+            <stop offset="60%" stop-color="#b87333" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="#8a5a2a" stop-opacity="0.7"/>
+          </radialGradient>
+          <filter id="coreShadow">
+            <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#c49a6c" flood-opacity="0.35"/>
+          </filter>
+        </defs>
+
+        <!-- Threads converging to center — chaotic origins, ordered convergence -->
+        <g>
+          <!-- Top-left thread: wide arc -->
+          <path class="thread" d="M 28 38 C 40 55, 60 70, 92 95" stroke="url(#threadGrad1)" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+          <!-- Top-right thread -->
+          <path class="thread" d="M 172 32 C 155 52, 130 72, 108 94" stroke="url(#threadGrad2)" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+          <!-- Left thread -->
+          <path class="thread" d="M 18 118 C 38 112, 62 106, 90 100" stroke="url(#threadGrad3)" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <!-- Right thread -->
+          <path class="thread" d="M 182 128 C 160 120, 134 110, 110 102" stroke="url(#threadGrad4)" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+          <!-- Bottom-left thread -->
+          <path class="thread" d="M 52 178 C 62 158, 78 132, 95 108" stroke="url(#threadGrad5)" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+          <!-- Bottom-right thread -->
+          <path class="thread" d="M 152 182 C 142 160, 124 134, 106 108" stroke="url(#threadGrad6)" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+        </g>
+
+        <!-- Central spindle whorl — the convergence point -->
+        <g class="spindle-core" filter="url(#coreShadow)">
+          <!-- Diamond / rhombus spindle shape -->
+          <path d="M 100 82 L 114 100 L 100 118 L 86 100 Z" fill="url(#coreGrad)" opacity="0.95"/>
+          <!-- Inner highlight -->
+          <path d="M 100 87 L 109 100 L 100 113 L 91 100 Z" fill="none" stroke="#e8d5b8" stroke-width="0.5" opacity="0.4"/>
+        </g>
+
+        <!-- Data nodes at thread origins — the documents feeding in -->
+        <g>
+          <circle class="node" cx="28" cy="38" r="3.5" fill="#c49a6c" opacity="0.7"/>
+          <circle class="node" cx="172" cy="32" r="3" fill="#d4a574" opacity="0.6"/>
+          <circle class="node" cx="18" cy="118" r="4" fill="#b87333" opacity="0.7"/>
+          <circle class="node" cx="182" cy="128" r="3.2" fill="#c49a6c" opacity="0.6"/>
+          <circle class="node" cx="52" cy="178" r="3" fill="#6aaa9c" opacity="0.6"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="hero-text">
+      <h1 class="wordmark">Spindle</h1>
+      <p class="tagline">Structure from chaos</p>
+    </div>
+  </div>
+
+  <!-- Variations -->
+  <section class="variations">
+    <h2 class="section-title">Mark Variations</h2>
+    <p class="section-subtitle">Icon adapts across dark, light, and compact contexts.</p>
+    <div class="grid">
+      <!-- Dark -->
+      <div class="card">
+        <svg width="80" height="80" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 28 38 C 40 55, 60 70, 92 95" stroke="#c49a6c" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
+          <path d="M 172 32 C 155 52, 130 72, 108 94" stroke="#d4a574" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.6"/>
+          <path d="M 18 118 C 38 112, 62 106, 90 100" stroke="#b87333" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.6"/>
+          <path d="M 182 128 C 160 120, 134 110, 110 102" stroke="#c49a6c" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.6"/>
+          <path d="M 52 178 C 62 158, 78 132, 95 108" stroke="#6aaa9c" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.5"/>
+          <path d="M 152 182 C 142 160, 124 134, 106 108" stroke="#c47a7a" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.5"/>
+          <path d="M 100 82 L 114 100 L 100 118 L 86 100 Z" fill="#c49a6c"/>
+          <circle cx="28" cy="38" r="4" fill="#c49a6c" opacity="0.7"/>
+          <circle cx="172" cy="32" r="3.5" fill="#d4a574" opacity="0.6"/>
+          <circle cx="18" cy="118" r="4.5" fill="#b87333" opacity="0.7"/>
+          <circle cx="182" cy="128" r="3.5" fill="#c49a6c" opacity="0.6"/>
+          <circle cx="52" cy="178" r="3.5" fill="#6aaa9c" opacity="0.6"/>
+        </svg>
+        <span class="card-label">Dark</span>
+      </div>
+      <!-- Light -->
+      <div class="card card-bg-light">
+        <svg width="80" height="80" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 28 38 C 40 55, 60 70, 92 95" stroke="#8a5a2a" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.5"/>
+          <path d="M 172 32 C 155 52, 130 72, 108 94" stroke="#9a6a3a" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.5"/>
+          <path d="M 18 118 C 38 112, 62 106, 90 100" stroke="#7a4a1a" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.5"/>
+          <path d="M 182 128 C 160 120, 134 110, 110 102" stroke="#8a5a2a" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.5"/>
+          <path d="M 52 178 C 62 158, 78 132, 95 108" stroke="#3a7a6c" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.4"/>
+          <path d="M 152 182 C 142 160, 124 134, 106 108" stroke="#a45a5a" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.4"/>
+          <path d="M 100 82 L 114 100 L 100 118 L 86 100 Z" fill="#8a5a2a"/>
+          <circle cx="28" cy="38" r="4" fill="#8a5a2a" opacity="0.6"/>
+          <circle cx="172" cy="32" r="3.5" fill="#9a6a3a" opacity="0.5"/>
+          <circle cx="18" cy="118" r="4.5" fill="#7a4a1a" opacity="0.6"/>
+          <circle cx="182" cy="128" r="3.5" fill="#8a5a2a" opacity="0.5"/>
+          <circle cx="52" cy="178" r="3.5" fill="#3a7a6c" opacity="0.5"/>
+        </svg>
+        <span class="card-label">Light</span>
+      </div>
+      <!-- Monochrome -->
+      <div class="card">
+        <svg width="80" height="80" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 28 38 C 40 55, 60 70, 92 95" stroke="#e8e6e1" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.35"/>
+          <path d="M 172 32 C 155 52, 130 72, 108 94" stroke="#e8e6e1" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.3"/>
+          <path d="M 18 118 C 38 112, 62 106, 90 100" stroke="#e8e6e1" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.35"/>
+          <path d="M 182 128 C 160 120, 134 110, 110 102" stroke="#e8e6e1" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.3"/>
+          <path d="M 52 178 C 62 158, 78 132, 95 108" stroke="#e8e6e1" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.25"/>
+          <path d="M 152 182 C 142 160, 124 134, 106 108" stroke="#e8e6e1" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.25"/>
+          <path d="M 100 82 L 114 100 L 100 118 L 86 100 Z" fill="#e8e6e1"/>
+          <circle cx="28" cy="38" r="4" fill="#e8e6e1" opacity="0.4"/>
+          <circle cx="172" cy="32" r="3.5" fill="#e8e6e1" opacity="0.35"/>
+          <circle cx="18" cy="118" r="4.5" fill="#e8e6e1" opacity="0.4"/>
+          <circle cx="182" cy="128" r="3.5" fill="#e8e6e1" opacity="0.35"/>
+          <circle cx="52" cy="178" r="3.5" fill="#e8e6e1" opacity="0.3"/>
+        </svg>
+        <span class="card-label">Mono</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Lockups -->
+  <section class="lockups">
+    <h2 class="section-title">Lockups</h2>
+    <p class="section-subtitle">Wordmark paired with the icon for brand contexts.</p>
+    <div class="lockup-row">
+      <div class="lockup-card">
+        <div class="lockup-top">
+          <svg width="44" height="44" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 28 38 C 40 55, 60 70, 92 95" stroke="#c49a6c" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.6"/>
+            <path d="M 172 32 C 155 52, 130 72, 108 94" stroke="#d4a574" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
+            <path d="M 18 118 C 38 112, 62 106, 90 100" stroke="#b87333" stroke-width="2.8" stroke-linecap="round" fill="none" opacity="0.6"/>
+            <path d="M 182 128 C 160 120, 134 110, 110 102" stroke="#c49a6c" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.6"/>
+            <path d="M 52 178 C 62 158, 78 132, 95 108" stroke="#6aaa9c" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.5"/>
+            <path d="M 152 182 C 142 160, 124 134, 106 108" stroke="#c47a7a" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.5"/>
+            <path d="M 100 82 L 114 100 L 100 118 L 86 100 Z" fill="#c49a6c"/>
+            <circle cx="28" cy="38" r="5" fill="#c49a6c" opacity="0.7"/>
+            <circle cx="172" cy="32" r="4.5" fill="#d4a574" opacity="0.6"/>
+            <circle cx="18" cy="118" r="5.5" fill="#b87333" opacity="0.7"/>
+            <circle cx="182" cy="128" r="4.5" fill="#c49a6c" opacity="0.6"/>
+            <circle cx="52" cy="178" r="4.5" fill="#6aaa9c" opacity="0.6"/>
+          </svg>
+          <span class="lockup-wordmark">Spindle</span>
+        </div>
+        <span class="lockup-desc">Taxonomy Discovery Engine</span>
+      </div>
+      <div class="lockup-card lockup-card-light">
+        <div class="lockup-top">
+          <svg width="44" height="44" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 28 38 C 40 55, 60 70, 92 95" stroke="#8a5a2a" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.5"/>
+            <path d="M 172 32 C 155 52, 130 72, 108 94" stroke="#9a6a3a" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.5"/>
+            <path d="M 18 118 C 38 112, 62 106, 90 100" stroke="#7a4a1a" stroke-width="2.8" stroke-linecap="round" fill="none" opacity="0.5"/>
+            <path d="M 182 128 C 160 120, 134 110, 110 102" stroke="#8a5a2a" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.5"/>
+            <path d="M 52 178 C 62 158, 78 132, 95 108" stroke="#3a7a6c" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.4"/>
+            <path d="M 152 182 C 142 160, 124 134, 106 108" stroke="#a45a5a" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.4"/>
+            <path d="M 100 82 L 114 100 L 100 118 L 86 100 Z" fill="#8a5a2a"/>
+            <circle cx="28" cy="38" r="5" fill="#8a5a2a" opacity="0.6"/>
+            <circle cx="172" cy="32" r="4.5" fill="#9a6a3a" opacity="0.5"/>
+            <circle cx="18" cy="118" r="5.5" fill="#7a4a1a" opacity="0.6"/>
+            <circle cx="182" cy="128" r="4.5" fill="#8a5a2a" opacity="0.5"/>
+            <circle cx="52" cy="178" r="4.5" fill="#3a7a6c" opacity="0.5"/>
+          </svg>
+          <span class="lockup-wordmark">Spindle</span>
+        </div>
+        <span class="lockup-desc">Taxonomy Discovery Engine</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Palette -->
+  <section class="palette">
+    <h2 class="section-title">Palette</h2>
+    <p class="section-subtitle">Warm fibers with signal accents for contradictions and resolution states.</p>
+    <div class="swatches">
+      <div class="swatch swatch-thread">
+        <span class="swatch-name">Thread</span>
+        <span class="swatch-hex">#c49a6c</span>
+      </div>
+      <div class="swatch swatch-copper">
+        <span class="swatch-name">Copper</span>
+        <span class="swatch-hex">#b87333</span>
+      </div>
+      <div class="swatch swatch-warm">
+        <span class="swatch-name">Flax</span>
+        <span class="swatch-hex">#d4a574</span>
+      </div>
+      <div class="swatch swatch-rose">
+        <span class="swatch-name">Snag</span>
+        <span class="swatch-hex">#c47a7a</span>
+      </div>
+      <div class="swatch swatch-teal">
+        <span class="swatch-name">Resolve</span>
+        <span class="swatch-hex">#6aaa9c</span>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>Spindle — Taxonomy Discovery & Entity Resolution Engine</p>
+  </footer>
+</div>
+</body>
+</html>
