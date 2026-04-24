@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react"
+import ReactMarkdown from "react-markdown"
 import { cn } from "@/lib/utils"
 import type { ChatMessage, CitationType } from "@/lib/types"
 import { sendChatMessage } from "@/lib/api"
 import { Button } from "./ui/button"
 import { ScrollArea } from "./ui/scroll-area"
-import { Send, MessageSquare, Sparkles, AlertTriangle } from "lucide-react"
+import { Send, MessageSquare, Sparkles, AlertTriangle, RotateCcw } from "lucide-react"
 
 const CONTRADICTION_PATTERN = /\bnote:\s|contradiction/i
 
@@ -25,7 +26,7 @@ export function ChatPanel({ hasTaxonomy, embedded }: ChatPanelProps) {
   const [input, setInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
   const [suggestions, setSuggestions] = useState<string[]>(DEFAULT_SUGGESTIONS)
-  const [sessionId] = useState(() => crypto.randomUUID())
+  const [sessionId, setSessionId] = useState(() => crypto.randomUUID())
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -71,6 +72,12 @@ export function ChatPanel({ hasTaxonomy, embedded }: ChatPanelProps) {
     }
   }
 
+  const handleReset = () => {
+    setMessages([])
+    setSuggestions(DEFAULT_SUGGESTIONS)
+    setSessionId(crypto.randomUUID())
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -99,50 +106,100 @@ export function ChatPanel({ hasTaxonomy, embedded }: ChatPanelProps) {
   }
 
   const renderContentWithCallouts = (content: string) => {
-    const paragraphs = content.split("\n")
-    const elements: React.ReactNode[] = []
+    const lines = content.split("\n")
+    const segments: { type: "markdown" | "callout"; text: string }[] = []
     let i = 0
 
-    while (i < paragraphs.length) {
-      const line = paragraphs[i]
+    while (i < lines.length) {
+      const line = lines[i]
 
-      // Group consecutive blank lines into a single break
-      if (line.trim() === "") {
-        elements.push(<br key={`br-${i}`} />)
-        i++
-        continue
-      }
-
-      // Check if this paragraph contains contradiction/note keywords
       if (CONTRADICTION_PATTERN.test(line)) {
-        // Collect consecutive callout lines (a callout block may span multiple lines)
         const calloutLines: string[] = [line]
         while (
-          i + 1 < paragraphs.length &&
-          paragraphs[i + 1].trim() !== "" &&
-          CONTRADICTION_PATTERN.test(paragraphs[i + 1])
+          i + 1 < lines.length &&
+          lines[i + 1].trim() !== "" &&
+          CONTRADICTION_PATTERN.test(lines[i + 1])
         ) {
           i++
-          calloutLines.push(paragraphs[i])
+          calloutLines.push(lines[i])
         }
-
-        elements.push(
-          <div
-            key={`callout-${i}`}
-            className="my-1 flex items-start gap-1.5 rounded-r border-l-2 border-warning bg-warning/5 py-1 pl-2 pr-1"
-          >
-            <AlertTriangle className="mt-0.5 h-3 w-3 flex-shrink-0 text-warning" />
-            <span>{calloutLines.join("\n")}</span>
-          </div>
-        )
+        segments.push({ type: "callout", text: calloutLines.join("\n") })
       } else {
-        elements.push(<span key={`p-${i}`}>{line}{"\n"}</span>)
+        const last = segments[segments.length - 1]
+        if (last && last.type === "markdown") {
+          last.text += "\n" + line
+        } else {
+          segments.push({ type: "markdown", text: line })
+        }
       }
-
       i++
     }
 
-    return elements
+    return segments.map((seg, idx) => {
+      if (seg.type === "callout") {
+        return (
+          <div
+            key={idx}
+            className="my-1 flex items-start gap-1.5 rounded-r border-l-2 border-warning bg-warning/5 py-1 pl-2 pr-1"
+          >
+            <AlertTriangle className="mt-0.5 h-3 w-3 flex-shrink-0 text-warning" />
+            <span className="text-sm">{seg.text}</span>
+          </div>
+        )
+      }
+      return (
+        <ReactMarkdown
+          key={idx}
+          components={{
+            p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+            em: ({ children }) => <em>{children}</em>,
+            ul: ({ children }) => <ul className="mb-2 ml-4 list-disc space-y-0.5 last:mb-0">{children}</ul>,
+            ol: ({ children }) => <ol className="mb-2 ml-4 list-decimal space-y-0.5 last:mb-0">{children}</ol>,
+            li: ({ children }) => <li>{children}</li>,
+            h1: ({ children }) => <h1 className="mb-1 text-base font-bold">{children}</h1>,
+            h2: ({ children }) => <h2 className="mb-1 text-sm font-bold">{children}</h2>,
+            h3: ({ children }) => <h3 className="mb-1 text-sm font-semibold">{children}</h3>,
+            code: ({ children, className }) => {
+              const isBlock = className?.includes("language-")
+              if (isBlock) {
+                return (
+                  <pre className="my-1 overflow-x-auto rounded bg-background/50 p-2 text-xs">
+                    <code>{children}</code>
+                  </pre>
+                )
+              }
+              return (
+                <code className="rounded bg-background/50 px-1 py-0.5 text-xs font-mono">
+                  {children}
+                </code>
+              )
+            },
+            pre: ({ children }) => <>{children}</>,
+            blockquote: ({ children }) => (
+              <blockquote className="my-1 border-l-2 border-primary/30 pl-2 text-muted-foreground">
+                {children}
+              </blockquote>
+            ),
+            a: ({ href, children }) => (
+              <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                {children}
+              </a>
+            ),
+            table: ({ children }) => (
+              <div className="my-1 overflow-x-auto">
+                <table className="w-full text-xs border-collapse">{children}</table>
+              </div>
+            ),
+            thead: ({ children }) => <thead className="border-b border-border">{children}</thead>,
+            th: ({ children }) => <th className="px-2 py-1 text-left font-semibold">{children}</th>,
+            td: ({ children }) => <td className="px-2 py-1 border-t border-border/50">{children}</td>,
+          }}
+        >
+          {seg.text}
+        </ReactMarkdown>
+      )
+    })
   }
 
   const renderMessage = (msg: ChatMessage, index: number) => {
@@ -164,7 +221,7 @@ export function ChatPanel({ hasTaxonomy, embedded }: ChatPanelProps) {
               : "bg-muted text-foreground"
           )}
         >
-          <div className="whitespace-pre-wrap">
+          <div className={cn(isUser && "whitespace-pre-wrap")}>
             {isUser ? msg.content : renderContentWithCallouts(msg.content)}
           </div>
           {msg.citations && msg.citations.length > 0 && (
@@ -184,9 +241,22 @@ export function ChatPanel({ hasTaxonomy, embedded }: ChatPanelProps) {
     )}>
       {!embedded && (
         <div className="border-b border-border p-4">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Chat</h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-semibold text-foreground">Chat</h2>
+            </div>
+            {messages.length > 0 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleReset}
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                title="Reset chat"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -269,6 +339,17 @@ export function ChatPanel({ hasTaxonomy, embedded }: ChatPanelProps) {
       {/* Input */}
       <div className="border-t border-border p-3">
         <div className="flex items-center gap-2">
+          {embedded && messages.length > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleReset}
+              className="h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-foreground"
+              title="Reset chat"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+            </Button>
+          )}
           <input
             ref={inputRef}
             value={input}

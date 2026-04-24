@@ -1,6 +1,6 @@
 """Structured retrieval path: query taxonomy tables directly."""
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from backend.chat.classifier import QueryType
@@ -11,6 +11,26 @@ from backend.models import (
     EntityResolution,
     Extraction,
 )
+
+_STOP_WORDS = frozenset(
+    "a an the is was were be been being have has had do does did will would "
+    "shall should may might can could about above after again all also am and "
+    "any are at before between but by for from get got had has have he her "
+    "here him his how i if in into is it its just let me my no nor not of "
+    "off on or our out own say she so some such than that the their them then "
+    "there these they this to too up us very want was we what when where which "
+    "while who whom why with you your happened show tell".split()
+)
+
+
+def _extract_keywords(query: str) -> list[str]:
+    """Extract meaningful keywords from a query, filtering out stop words."""
+    words = []
+    for w in query.lower().split():
+        cleaned = w.strip("?,.:;!\"'()[]{}").strip()
+        if cleaned and cleaned not in _STOP_WORDS and len(cleaned) > 1:
+            words.append(cleaned)
+    return words
 
 
 def _extraction_to_dict(ext: Extraction, doc: Document) -> dict:
@@ -75,14 +95,25 @@ def _get_contradictions(query: str, db: Session) -> list[dict]:
     contradictions = db.query(Contradiction).all()
     results = []
     query_lower = query.lower()
+
+    entity_cache: dict[str, Entity | None] = {}
     for c in contradictions:
-        # Include contradiction if the dimension name or values loosely match the query
-        if (
-            c.dimension_name.lower() in query_lower
-            or query_lower in c.dimension_name.lower()
-            or c.value_a.lower() in query_lower
-            or c.value_b.lower() in query_lower
-        ):
+        dim_lower = c.dimension_name.lower()
+        dim_match = dim_lower in query_lower or query_lower in dim_lower
+        val_match = c.value_a.lower() in query_lower or c.value_b.lower() in query_lower
+
+        entity_match = False
+        if c.entity_id:
+            if c.entity_id not in entity_cache:
+                entity_cache[c.entity_id] = db.query(Entity).filter(Entity.id == c.entity_id).first()
+            entity = entity_cache[c.entity_id]
+            if entity:
+                canon = entity.canonical_name.lower()
+                entity_match = canon in query_lower or any(
+                    alias.lower() in query_lower for alias in (entity.aliases or [])
+                )
+
+        if dim_match or val_match or entity_match:
             doc_a = db.query(Document).filter(Document.id == c.doc_a_id).first()
             doc_b = db.query(Document).filter(Document.id == c.doc_b_id).first()
             if doc_a and doc_b:
@@ -104,19 +135,20 @@ async def structured_search(
     effective_date = func.coalesce(Document.report_date, Document.uploaded_at)
 
     if query_type == QueryType.FACT_LOOKUP:
-        # Search extractions by dimension_name and resolved_value
+        keywords = _extract_keywords(query)
+        keyword_filters = []
+        for kw in keywords:
+            keyword_filters.append(func.lower(Extraction.dimension_name).contains(kw))
+            keyword_filters.append(func.lower(Extraction.raw_value).contains(kw))
+            keyword_filters.append(func.lower(Extraction.resolved_value).contains(kw))
+
         extractions = (
             db.query(Extraction, Document)
             .join(Document, Extraction.document_id == Document.id)
-            .filter(
-                func.lower(Extraction.dimension_name).contains(query_lower)
-                | func.lower(Extraction.raw_value).contains(query_lower)
-                | func.lower(Extraction.resolved_value).contains(query_lower)
-            )
+            .filter(or_(*keyword_filters) if keyword_filters else func.lower(Extraction.dimension_name).contains(query_lower))
             .order_by(effective_date.desc())
             .all()
         )
-        # If keyword search yields nothing, return all extractions (small corpus)
         if not extractions:
             extractions = (
                 db.query(Extraction, Document)
@@ -143,9 +175,10 @@ async def structured_search(
         entities = db.query(Entity).all()
         matched_entity_ids = set()
         for entity in entities:
-            name_match = query_lower in entity.canonical_name.lower()
+            canon = entity.canonical_name.lower()
+            name_match = canon in query_lower or query_lower in canon
             alias_match = any(
-                query_lower in alias.lower()
+                alias.lower() in query_lower or query_lower in alias.lower()
                 for alias in (entity.aliases or [])
             )
             if name_match or alias_match:
@@ -172,19 +205,22 @@ async def structured_search(
                     for ext in doc_extractions:
                         results.append(_extraction_to_dict(ext, doc))
 
-        # Fallback: also search extractions by the query text
+        # Fallback: search extractions by individual keywords
         if not results:
-            extractions = (
-                db.query(Extraction, Document)
-                .join(Document, Extraction.document_id == Document.id)
-                .filter(
-                    func.lower(Extraction.raw_value).contains(query_lower)
-                    | func.lower(Extraction.resolved_value).contains(query_lower)
+            keywords = _extract_keywords(query)
+            keyword_filters = []
+            for kw in keywords:
+                keyword_filters.append(func.lower(Extraction.raw_value).contains(kw))
+                keyword_filters.append(func.lower(Extraction.resolved_value).contains(kw))
+            if keyword_filters:
+                extractions = (
+                    db.query(Extraction, Document)
+                    .join(Document, Extraction.document_id == Document.id)
+                    .filter(or_(*keyword_filters))
+                    .all()
                 )
-                .all()
-            )
-            for ext, doc in extractions:
-                results.append(_extraction_to_dict(ext, doc))
+                for ext, doc in extractions:
+                    results.append(_extraction_to_dict(ext, doc))
 
     elif query_type == QueryType.TEMPORAL:
         # Search extractions sorted by document date (newest first)
