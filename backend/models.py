@@ -122,6 +122,16 @@ class Contradiction(Base):
     doc_b = relationship("Document", foreign_keys=[doc_b_id])
 
 
+class TaxonomyTemplate(Base):
+    __tablename__ = "taxonomy_templates"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    label = Column(Text, nullable=False)
+    description = Column(Text, nullable=False)
+    dimensions = Column(JSON, nullable=False, default=list)  # list of {name, description, expected_type}
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
 class DocumentChunk(Base):
     __tablename__ = "document_chunks"
 

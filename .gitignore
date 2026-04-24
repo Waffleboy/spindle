@@ -18,3 +18,7 @@ node_modules/
 .next/
 
 docs/
+.pytest_cache
+.claude
+
+.env

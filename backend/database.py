@@ -1,10 +1,10 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from backend.config import DATABASE_URL
+from backend.config import get_settings
 
 engine = create_engine(
-    DATABASE_URL,
+    get_settings().database_url,
     connect_args={"check_same_thread": False},
 )
 

@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spindle — SaaS Theme Mockup v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #F5F7FA;
+    --bg-surface: #FFFFFF;
+    --bg-sunken: #EDF0F5;
+    --bg-hover: #F0F3F8;
+
+    --text-primary: #111827;
+    --text-secondary: #4B5563;
+    --text-tertiary: #6B7280;
+    --text-muted: #9CA3AF;
+    --text-inverse: #FFFFFF;
+
+    --blue-50: #F0F5FF;
+    --blue-100: #E0EAFF;
+    --blue-200: #C2D4FE;
+    --blue-400: #7BA4F7;
+    --blue-500: #5B8DEF;
+    --blue-600: #4A7AE5;
+    --blue-700: #3D6AD4;
+    --blue-900: #2C4A7C;
+
+    --accent: var(--blue-500);
+    --accent-hover: var(--blue-600);
+    --accent-light: var(--blue-50);
+    --accent-muted: rgba(91, 141, 239, 0.06);
+
+    --border: #E5E7EB;
+    --border-strong: #D1D5DB;
+
+    --success: #059669;
+    --success-light: #D1FAE5;
+    --warning: #D97706;
+    --warning-light: #FEF3C7;
+    --error: #DC2626;
+    --error-light: #FEE2E2;
+
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.06), 0 2px 4px -1px rgba(0,0,0,0.04);
+
+    --radius: 8px;
+    --radius-sm: 6px;
+    --radius-lg: 12px;
+    --radius-full: 9999px;
+
+    --font-body: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-display: 'Instrument Serif', Georgia, serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg-base);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  /* ─── Header ─── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-surface);
+    z-index: 10;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-mark { width: 32px; height: 32px; }
+
+  .brand-name {
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 400;
+    color: var(--text-primary);
+    letter-spacing: 0.01em;
+  }
+
+  .brand-tagline {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 400;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+
+  .header-right .processed-count {
+    padding: 3px 10px;
+    background: var(--bg-sunken);
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    transition: all 0.15s;
+  }
+
+  .theme-toggle:hover {
+    border-color: var(--blue-400);
+    background: var(--blue-50);
+    color: var(--accent);
+  }
+
+  .theme-toggle svg { width: 14px; height: 14px; }
+
+  /* ─── Pipeline bar ─── */
+  .pipeline-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 8px 20px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .pipeline-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+  }
+
+  .pipeline-step::after {
+    content: '';
+    flex: 1;
+    height: 2px;
+    background: var(--border);
+    margin: 0 6px;
+    border-radius: 1px;
+  }
+
+  .pipeline-step:last-child::after { display: none; }
+
+  .pipeline-step.completed::after { background: var(--success); }
+
+  .pipeline-step.active::after {
+    background: linear-gradient(90deg, var(--accent) 50%, var(--border) 50%);
+  }
+
+  .step-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 600;
+    flex-shrink: 0;
+    border: 1.5px solid var(--border);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    transition: all 0.3s;
+  }
+
+  .pipeline-step.completed .step-dot {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+  }
+
+  .pipeline-step.active .step-dot {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.12);
+    animation: activePulse 2s ease-in-out infinite;
+  }
+
+  @keyframes activePulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.12); }
+    50% { box-shadow: 0 0 0 5px rgba(91, 141, 239, 0.08); }
+  }
+
+  .step-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  .pipeline-step.completed .step-label { color: var(--success); font-weight: 500; }
+  .pipeline-step.active .step-label { color: var(--accent); font-weight: 500; }
+
+  /* ─── Main content ─── */
+  .main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ─── Left panel ─── */
+  .left-panel {
+    width: 272px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    background: var(--bg-surface);
+  }
+
+  .panel-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-header svg { color: var(--accent); width: 15px; height: 15px; }
+
+  .panel-body { flex: 1; overflow-y: auto; }
+
+  .upload-zone {
+    margin: 12px;
+    padding: 20px 16px;
+    border: 1.5px dashed var(--border-strong);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--bg-base);
+  }
+
+  .upload-zone:hover {
+    border-color: var(--blue-400);
+    background: var(--blue-50);
+  }
+
+  .upload-zone .upload-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--blue-50);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+    transition: all 0.15s;
+  }
+
+  .upload-zone:hover .upload-icon { background: var(--blue-100); }
+
+  .upload-zone .upload-icon svg {
+    width: 18px;
+    height: 18px;
+    color: var(--accent);
+  }
+
+  .upload-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: center;
+    font-weight: 500;
+  }
+
+  .upload-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .staged-files { padding: 0 12px; margin-bottom: 8px; }
+
+  .staged-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-tertiary);
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+
+  .staged-file {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--accent-muted);
+    border-radius: var(--radius-sm);
+    margin-bottom: 4px;
+    font-size: 12px;
+    color: var(--text-primary);
+    border: 1px solid rgba(91, 141, 239, 0.1);
+  }
+
+  .staged-file .remove {
+    margin-left: auto;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.15s;
+  }
+
+  .staged-file .remove:hover { color: var(--error); background: var(--error-light); }
+
+  .context-input {
+    margin: 0 12px 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-family: var(--font-body);
+    color: var(--text-primary);
+    background: var(--bg-surface);
+    width: calc(100% - 24px);
+    resize: none;
+    outline: none;
+    transition: all 0.15s;
+  }
+
+  .context-input::placeholder { color: var(--text-muted); }
+  .context-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(91, 141, 239, 0.08); }
+
+  .process-btn {
+    margin: 0 12px 12px;
+    padding: 8px 16px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 500;
+    font-family: var(--font-body);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: calc(100% - 24px);
+    transition: all 0.15s;
+    box-shadow: 0 1px 2px rgba(91, 141, 239, 0.2);
+  }
+
+  .process-btn:hover { background: var(--accent-hover); box-shadow: 0 2px 4px rgba(91, 141, 239, 0.25); }
+
+  .doc-section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-tertiary);
+    font-weight: 500;
+    padding: 10px 16px 6px;
+    border-top: 1px solid var(--border);
+  }
+
+  .doc-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 16px;
+    cursor: pointer;
+    transition: all 0.12s;
+    border-left: 2px solid transparent;
+  }
+
+  .doc-item:hover { background: var(--bg-hover); }
+
+  .doc-item.selected {
+    background: var(--blue-50);
+    border-left-color: var(--accent);
+  }
+
+  .doc-icon { width: 16px; height: 16px; flex-shrink: 0; }
+
+  .doc-icon.pdf { color: #DC2626; }
+  .doc-icon.docx { color: #2563EB; }
+  .doc-icon.xlsx { color: #059669; }
+
+  .doc-info { flex: 1; min-width: 0; }
+
+  .doc-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .doc-meta { font-size: 10px; color: var(--text-muted); }
+
+  .doc-status { flex-shrink: 0; }
+  .doc-status svg { width: 14px; height: 14px; }
+  .doc-status .check { color: var(--success); }
+  .doc-status .spin { color: var(--blue-400); animation: spin 1s linear infinite; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── Center panel ─── */
+  .center-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+    background: var(--bg-base);
+  }
+
+  .tab-bar {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-surface);
+    padding: 0 16px;
+  }
+
+  .tab {
+    padding: 9px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    font-family: var(--font-body);
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+  }
+
+  .tab:hover { color: var(--text-secondary); }
+
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-count {
+    margin-left: 5px;
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
+    background: var(--bg-sunken);
+    font-size: 10px;
+    color: var(--text-tertiary);
+  }
+
+  .table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-surface);
+  }
+
+  .table-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .table-header-left svg { color: var(--accent); width: 16px; height: 16px; }
+
+  .table-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 10px;
+    font-weight: 500;
+    border: 1px solid;
+  }
+
+  .badge-secondary { background: var(--bg-sunken); color: var(--text-secondary); border-color: var(--border); }
+  .badge-destructive { background: var(--error-light); color: var(--error); border-color: rgba(220,38,38,0.15); }
+  .badge-success { background: var(--success-light); color: var(--success); border-color: rgba(5,150,105,0.15); }
+  .badge-warning { background: var(--warning-light); color: var(--warning); border-color: rgba(217,119,6,0.15); }
+
+  .table-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+
+  /* Data table */
+  .table-wrap {
+    flex: 1;
+    overflow: auto;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+  }
+
+  .data-table thead th {
+    padding: 8px 16px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    white-space: nowrap;
+  }
+
+  .data-table thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 6;
+  }
+
+  .th-sub {
+    display: block;
+    font-size: 9px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  .data-table tbody tr { transition: background 0.1s; }
+
+  .data-table tbody tr:hover { background: rgba(91, 141, 239, 0.02); }
+
+  .data-table tbody td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    color: var(--text-primary);
+  }
+
+  .data-table tbody td:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--bg-surface);
+    z-index: 4;
+    border-right: 1px solid var(--border);
+  }
+
+  .data-table tbody tr:hover td:first-child { background: #F8FAFF; }
+
+  .cell-filename {
+    font-weight: 500;
+    color: var(--text-primary);
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+
+  .cell-doctype { font-size: 10px; color: var(--text-muted); }
+
+  .cell-value { color: var(--text-primary); }
+
+  .cell-contradiction {
+    color: var(--error);
+    cursor: pointer;
+  }
+
+  .cell-entity-review { color: var(--warning); cursor: pointer; }
+
+  .cell-confirmed {
+    border-left: 2px solid rgba(5, 150, 105, 0.3);
+    padding-left: 14px;
+  }
+
+  .cell-source { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+  .cell-old-value { font-size: 10px; color: var(--text-muted); text-decoration: line-through; margin-top: 1px; }
+  .cell-empty { color: var(--border-strong); }
+
+  .cell-warning-hint {
+    font-size: 10px;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  /* ─── Right panel ─── */
+  .right-panel {
+    width: 312px;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--border);
+    background: var(--bg-surface);
+  }
+
+  .chat-messages {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .msg { display: flex; max-width: 88%; }
+  .msg.user { align-self: flex-end; }
+  .msg.assistant { align-self: flex-start; }
+
+  .msg-bubble {
+    padding: 8px 12px;
+    border-radius: var(--radius-lg);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .msg.user .msg-bubble {
+    background: var(--accent);
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+
+  .msg.assistant .msg-bubble {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+
+  .citations {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+  }
+
+  .citation-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 7px;
+    border-radius: var(--radius-sm);
+    font-size: 10px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    border: 1px solid;
+  }
+
+  .citation-badge:hover { opacity: 0.7; }
+
+  .citation-taxonomy {
+    background: var(--blue-50);
+    color: var(--accent);
+    border-color: rgba(91, 141, 239, 0.15);
+  }
+
+  .citation-document {
+    background: var(--success-light);
+    color: var(--success);
+    border-color: rgba(5, 150, 105, 0.15);
+  }
+
+  .typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 10px 14px;
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    border-bottom-left-radius: 4px;
+    align-self: flex-start;
+  }
+
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    animation: typingBounce 1.4s ease-in-out infinite;
+  }
+
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes typingBounce {
+    0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-3px); }
+  }
+
+  .suggestions {
+    padding: 8px 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .suggestion-chip {
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border);
+    background: var(--bg-surface);
+    font-size: 10px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: all 0.15s;
+  }
+
+  .suggestion-chip:hover {
+    border-color: var(--blue-400);
+    background: var(--blue-50);
+    color: var(--accent);
+  }
+
+  .chat-input-area {
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .chat-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: var(--font-body);
+    color: var(--text-primary);
+    background: var(--bg-base);
+    outline: none;
+    transition: all 0.15s;
+  }
+
+  .chat-input::placeholder { color: var(--text-muted); }
+  .chat-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91, 141, 239, 0.08); }
+
+  .send-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(91, 141, 239, 0.2);
+  }
+
+  .send-btn:hover { background: var(--accent-hover); }
+
+  /* ─── Scrollbar ─── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.18); }
+
+  /* ─── Banner ─── */
+  .comparison-banner {
+    background: linear-gradient(135deg, #2C4A7C 0%, #3D6AD4 50%, #5B8DEF 100%);
+    color: white;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .comparison-banner .label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.6;
+  }
+
+  .comparison-banner .divider {
+    width: 1px;
+    height: 16px;
+    background: rgba(255,255,255,0.2);
+  }
+
+  /* ─── Animations ─── */
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .data-table tbody tr {
+    animation: fadeSlideIn 0.25s ease forwards;
+    opacity: 0;
+  }
+  .data-table tbody tr:nth-child(1) { animation-delay: 0.04s; }
+  .data-table tbody tr:nth-child(2) { animation-delay: 0.08s; }
+  .data-table tbody tr:nth-child(3) { animation-delay: 0.12s; }
+  .data-table tbody tr:nth-child(4) { animation-delay: 0.16s; }
+</style>
+</head>
+<body>
+<div class="comparison-banner">
+  <span class="label">Theme Mockup v2</span>
+  <span class="divider"></span>
+  <span>SaaS Light — Soft Blue</span>
+  <span class="divider"></span>
+  <span style="opacity: 0.7;">Geist + Instrument Serif &middot; Blue 500 Accent &middot; Cool Gray</span>
+</div>
+
+<div class="app">
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <svg class="logo-mark" viewBox="20 30 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 28 38 C 40 55, 60 70, 92 95" stroke="#5B8DEF" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.45"/>
+        <path d="M 172 32 C 155 52, 130 72, 108 94" stroke="#7BA4F7" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.4"/>
+        <path d="M 18 118 C 38 112, 62 106, 90 100" stroke="#4A7AE5" stroke-width="2.8" stroke-linecap="round" fill="none" opacity="0.45"/>
+        <path d="M 182 128 C 160 120, 134 110, 110 102" stroke="#7BA4F7" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.4"/>
+        <path d="M 52 178 C 62 158, 78 132, 95 108" stroke="#059669" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.3"/>
+        <path d="M 152 182 C 142 160, 124 134, 106 108" stroke="#DC2626" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.25"/>
+        <path d="M 100 82 L 114 100 L 100 118 L 86 100 Z" fill="#5B8DEF"/>
+        <circle cx="28" cy="38" r="5" fill="#5B8DEF" opacity="0.5"/>
+        <circle cx="172" cy="32" r="4.5" fill="#7BA4F7" opacity="0.45"/>
+        <circle cx="18" cy="118" r="5.5" fill="#4A7AE5" opacity="0.5"/>
+        <circle cx="182" cy="128" r="4.5" fill="#7BA4F7" opacity="0.45"/>
+        <circle cx="52" cy="178" r="4.5" fill="#059669" opacity="0.4"/>
+      </svg>
+      <div>
+        <div class="brand-name">Spindle</div>
+        <div class="brand-tagline">Structure from chaos</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="processed-count">3/4 processed</span>
+      <button class="theme-toggle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        Light
+      </button>
+    </div>
+  </header>
+
+  <!-- Pipeline -->
+  <div class="pipeline-bar">
+    <div class="pipeline-step completed">
+      <div class="step-dot">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <span class="step-label">Type Detection</span>
+    </div>
+    <div class="pipeline-step completed">
+      <div class="step-dot">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <span class="step-label">Taxonomy</span>
+    </div>
+    <div class="pipeline-step completed">
+      <div class="step-dot">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <span class="step-label">Extraction</span>
+    </div>
+    <div class="pipeline-step active">
+      <div class="step-dot">4</div>
+      <span class="step-label">Entities</span>
+    </div>
+    <div class="pipeline-step">
+      <div class="step-dot">5</div>
+      <span class="step-label">Contradictions</span>
+    </div>
+  </div>
+
+  <!-- Main 3-Panel -->
+  <div class="main-content">
+
+    <!-- LEFT: Documents -->
+    <div class="left-panel">
+      <div class="panel-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+        Documents
+      </div>
+      <div class="panel-body">
+        <div class="upload-zone">
+          <div class="upload-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <span class="upload-text">Drop files or click to browse</span>
+          <span class="upload-hint">PDF, DOCX, XLSX, CSV</span>
+        </div>
+
+        <div class="staged-files">
+          <div class="staged-label">Ready to process (2)</div>
+          <div class="staged-file">
+            <svg class="doc-icon pdf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+            Q3_Report.pdf
+            <span class="remove">&times;</span>
+          </div>
+          <div class="staged-file">
+            <svg class="doc-icon xlsx" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+            Revenue_Data.xlsx
+            <span class="remove">&times;</span>
+          </div>
+        </div>
+
+        <textarea class="context-input" rows="2" placeholder="Company context (optional)...">Acme Corp — fiscal year ends March 31</textarea>
+
+        <button class="process-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Process (2)
+        </button>
+
+        <div class="doc-section-label">Uploaded (4)</div>
+
+        <div class="doc-item selected">
+          <svg class="doc-icon pdf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+          <div class="doc-info">
+            <div class="doc-name">Annual_Report_2024.pdf</div>
+            <div class="doc-meta">Annual Report &mdash; 42 pages</div>
+          </div>
+          <div class="doc-status"><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+        </div>
+
+        <div class="doc-item">
+          <svg class="doc-icon docx" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+          <div class="doc-info">
+            <div class="doc-name">Board_Minutes_Q2.docx</div>
+            <div class="doc-meta">Minutes &mdash; 8 pages</div>
+          </div>
+          <div class="doc-status"><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+        </div>
+
+        <div class="doc-item">
+          <svg class="doc-icon xlsx" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+          <div class="doc-info">
+            <div class="doc-name">Financial_Statements.xlsx</div>
+            <div class="doc-meta">Financials &mdash; 5 sheets</div>
+          </div>
+          <div class="doc-status"><svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+        </div>
+
+        <div class="doc-item">
+          <svg class="doc-icon pdf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+          <div class="doc-info">
+            <div class="doc-name">Compliance_Audit.pdf</div>
+            <div class="doc-meta">Audit Report &mdash; 18 pages</div>
+          </div>
+          <div class="doc-status"><svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: Taxonomy -->
+    <div class="center-panel">
+      <div class="tab-bar">
+        <button class="tab active">Taxonomy</button>
+        <button class="tab">Templates <span class="tab-count">3</span></button>
+      </div>
+
+      <div class="table-header">
+        <div class="table-header-left">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+          <span class="table-title">Taxonomy Dashboard</span>
+          <span class="badge badge-secondary">Annual Report</span>
+        </div>
+        <div class="table-header-right">
+          <span>3 documents</span>
+          <span>6 dimensions</span>
+          <span class="badge badge-destructive">2 contradictions</span>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="min-width: 160px;">Document</th>
+              <th style="min-width: 130px;">Revenue <span class="th-sub">currency</span></th>
+              <th style="min-width: 130px;">CEO <span class="th-sub">entity</span></th>
+              <th style="min-width: 120px;">Fiscal Year <span class="th-sub">date</span></th>
+              <th style="min-width: 110px;">Employees <span class="th-sub">number</span></th>
+              <th style="min-width: 150px;">Headquarters <span class="th-sub">location</span></th>
+              <th style="min-width: 120px;">Net Income <span class="th-sub">currency</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="cell-filename">Annual_Report_2024.pdf</div>
+                <div class="cell-doctype">Annual Report</div>
+              </td>
+              <td class="cell-confirmed">
+                <div class="cell-value">$4.2B</div>
+                <div class="cell-source">p. 12, 45</div>
+              </td>
+              <td>
+                <div class="cell-value">Jane Morrison</div>
+                <div class="cell-old-value">J. Morrison</div>
+                <div class="cell-source">p. 3</div>
+              </td>
+              <td class="cell-confirmed">
+                <div class="cell-value">FY 2024</div>
+                <div class="cell-source">p. 1</div>
+              </td>
+              <td>
+                <div class="cell-value">12,400</div>
+                <div class="cell-source">p. 28</div>
+              </td>
+              <td class="cell-confirmed">
+                <div class="cell-value">San Francisco, CA</div>
+                <div class="cell-source">p. 2</div>
+              </td>
+              <td class="cell-confirmed">
+                <div class="cell-value">$680M</div>
+                <div class="cell-source">p. 45</div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="cell-filename">Board_Minutes_Q2.docx</div>
+                <div class="cell-doctype">Minutes</div>
+              </td>
+              <td style="background: var(--error-light);">
+                <div class="cell-contradiction">$4.1B</div>
+                <div class="cell-warning-hint" style="color: var(--error); opacity: 0.8;">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  Contradicts Annual Report
+                </div>
+              </td>
+              <td style="background: var(--warning-light);">
+                <div class="cell-entity-review">Jane M.</div>
+                <div class="cell-warning-hint" style="color: var(--warning); opacity: 0.85;">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                  Entity review needed
+                </div>
+              </td>
+              <td class="cell-confirmed">
+                <div class="cell-value">FY 2024</div>
+                <div class="cell-source">p. 1</div>
+              </td>
+              <td>
+                <div class="cell-empty">&mdash;</div>
+              </td>
+              <td class="cell-confirmed">
+                <div class="cell-value">San Francisco, CA</div>
+                <div class="cell-source">p. 1</div>
+              </td>
+              <td style="background: var(--error-light);">
+                <div class="cell-contradiction">$720M</div>
+                <div class="cell-warning-hint" style="color: var(--error); opacity: 0.8;">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  Contradicts Annual Report
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td>
+                <div class="cell-filename">Financial_Statements.xlsx</div>
+                <div class="cell-doctype">Financials</div>
+              </td>
+              <td class="cell-confirmed">
+                <div class="cell-value">$4.2B</div>
+                <div class="cell-source">Sheet 1</div>
+              </td>
+              <td>
+                <div class="cell-empty">&mdash;</div>
+              </td>
+              <td class="cell-confirmed">
+                <div class="cell-value">FY 2024</div>
+                <div class="cell-source">Sheet 1</div>
+              </td>
+              <td>
+                <div class="cell-value">12,350</div>
+                <div class="cell-source">Sheet 3</div>
+              </td>
+              <td>
+                <div class="cell-empty">&mdash;</div>
+              </td>
+              <td class="cell-confirmed">
+                <div class="cell-value">$680M</div>
+                <div class="cell-source">Sheet 1</div>
+              </td>
+            </tr>
+
+            <tr style="opacity: 0.45;">
+              <td>
+                <div class="cell-filename">Compliance_Audit.pdf</div>
+                <div class="cell-doctype" style="color: var(--accent);">Processing...</div>
+              </td>
+              <td><div class="cell-empty">&mdash;</div></td>
+              <td><div class="cell-empty">&mdash;</div></td>
+              <td><div class="cell-empty">&mdash;</div></td>
+              <td><div class="cell-empty">&mdash;</div></td>
+              <td><div class="cell-empty">&mdash;</div></td>
+              <td><div class="cell-empty">&mdash;</div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RIGHT: Chat -->
+    <div class="right-panel">
+      <div class="panel-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+        Chat
+      </div>
+
+      <div class="chat-messages">
+        <div class="msg user">
+          <div class="msg-bubble">What contradictions were found in the revenue figures?</div>
+        </div>
+
+        <div class="msg assistant">
+          <div class="msg-bubble">
+            The Board Minutes Q2 reports revenue of <strong>$4.1B</strong> while the Annual Report states <strong>$4.2B</strong>. The Financial Statements confirm $4.2B, suggesting the Board Minutes figure may be a preliminary estimate.
+            <br><br>
+            Similarly, net income shows <strong>$720M</strong> in the minutes vs <strong>$680M</strong> in both the annual report and financial statements.
+            <div class="citations">
+              <span class="citation-badge citation-taxonomy">Revenue</span>
+              <span class="citation-badge citation-document">Annual Report p.45</span>
+              <span class="citation-badge citation-document">Board Minutes p.3</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="msg user">
+          <div class="msg-bubble">Which entities still need review?</div>
+        </div>
+
+        <div class="typing-indicator">
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+        </div>
+      </div>
+
+      <div class="suggestions">
+        <button class="suggestion-chip">Resolve revenue contradiction</button>
+        <button class="suggestion-chip">Show all entity aliases</button>
+        <button class="suggestion-chip">Export taxonomy</button>
+      </div>
+
+      <div class="chat-input-area">
+        <input class="chat-input" placeholder="Ask about your documents..." />
+        <button class="send-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
