@@ -15,6 +15,8 @@ from backend.models import (
 
 def _extraction_to_dict(ext: Extraction, doc: Document) -> dict:
     """Convert an Extraction + its Document into a result dict."""
+    effective_date = doc.report_date or doc.uploaded_at
+    is_approximate = doc.report_date is None
     return {
         "source": "taxonomy",
         "data": {
@@ -24,13 +26,35 @@ def _extraction_to_dict(ext: Extraction, doc: Document) -> dict:
             "confidence": ext.confidence,
         },
         "document": doc.original_filename,
-        "document_date": doc.uploaded_at.isoformat() if doc.uploaded_at else None,
+        "document_date": effective_date.isoformat() if effective_date else None,
+        "is_approximate_date": is_approximate,
         "pages": ext.source_pages,
     }
 
 
 def _contradiction_to_dict(c: Contradiction, doc_a: Document, doc_b: Document) -> dict:
     """Convert a Contradiction into a result dict."""
+    date_a = doc_a.report_date or doc_a.uploaded_at
+    date_b = doc_b.report_date or doc_b.uploaded_at
+
+    # Determine which value is more recent for temporal context
+    temporal_context = None
+    if date_a and date_b:
+        if date_a >= date_b:
+            temporal_context = (
+                f"Most recent value: '{c.value_a}' from {doc_a.original_filename} "
+                f"({date_a.strftime('%Y-%m-%d')}), "
+                f"older value: '{c.value_b}' from {doc_b.original_filename} "
+                f"({date_b.strftime('%Y-%m-%d')})"
+            )
+        else:
+            temporal_context = (
+                f"Most recent value: '{c.value_b}' from {doc_b.original_filename} "
+                f"({date_b.strftime('%Y-%m-%d')}), "
+                f"older value: '{c.value_a}' from {doc_a.original_filename} "
+                f"({date_a.strftime('%Y-%m-%d')})"
+            )
+
     return {
         "source": "taxonomy",
         "type": "contradiction",
@@ -42,6 +66,7 @@ def _contradiction_to_dict(c: Contradiction, doc_a: Document, doc_b: Document) -
         },
         "document_a": doc_a.original_filename,
         "document_b": doc_b.original_filename,
+        "temporal_context": temporal_context,
     }
 
 
@@ -75,6 +100,9 @@ async def structured_search(
     results: list[dict] = []
     query_lower = query.lower()
 
+    # Effective date expression: prefer report_date, fall back to uploaded_at
+    effective_date = func.coalesce(Document.report_date, Document.uploaded_at)
+
     if query_type == QueryType.FACT_LOOKUP:
         # Search extractions by dimension_name and resolved_value
         extractions = (
@@ -85,6 +113,7 @@ async def structured_search(
                 | func.lower(Extraction.raw_value).contains(query_lower)
                 | func.lower(Extraction.resolved_value).contains(query_lower)
             )
+            .order_by(effective_date.desc())
             .all()
         )
         # If keyword search yields nothing, return all extractions (small corpus)
@@ -92,6 +121,7 @@ async def structured_search(
             extractions = (
                 db.query(Extraction, Document)
                 .join(Document, Extraction.document_id == Document.id)
+                .order_by(effective_date.desc())
                 .all()
             )
         for ext, doc in extractions:
@@ -102,7 +132,7 @@ async def structured_search(
         extractions = (
             db.query(Extraction, Document)
             .join(Document, Extraction.document_id == Document.id)
-            .order_by(Document.uploaded_at)
+            .order_by(effective_date.desc())
             .all()
         )
         for ext, doc in extractions:
@@ -161,7 +191,7 @@ async def structured_search(
         extractions = (
             db.query(Extraction, Document)
             .join(Document, Extraction.document_id == Document.id)
-            .order_by(Document.uploaded_at.desc())
+            .order_by(effective_date.desc())
             .all()
         )
         for ext, doc in extractions:

@@ -31,11 +31,11 @@ export function ContradictionPopover({
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-rose-400" />
-            <span className="text-sm font-semibold text-rose-300">
+            <span className="text-sm font-semibold text-rose-500 dark:text-rose-300">
               Contradiction Detected
             </span>
           </div>
-          <div className="text-xs text-zinc-500 uppercase tracking-wider font-medium">
+          <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
             {contradiction.dimension_name}
           </div>
 
@@ -43,40 +43,40 @@ export function ContradictionPopover({
             <div
               className={`flex-1 rounded-md p-2 text-xs ${
                 aIsNewer === false
-                  ? "bg-zinc-800/50 text-zinc-400"
-                  : "bg-rose-500/10 border border-rose-500/20 text-rose-300"
+                  ? "bg-muted/50 text-muted-foreground"
+                  : "bg-rose-500/10 border border-rose-500/20 text-rose-500 dark:text-rose-300"
               }`}
             >
               <div className="font-medium truncate">
                 {contradiction.value_a}
               </div>
-              <div className="mt-1 text-[10px] text-zinc-500 truncate">
+              <div className="mt-1 text-[10px] text-muted-foreground truncate">
                 {contradiction.doc_a_filename}
               </div>
               {contradiction.doc_a_date && (
-                <div className="text-[10px] text-zinc-600">
+                <div className="text-[10px] text-muted-foreground/70">
                   {new Date(contradiction.doc_a_date).toLocaleDateString()}
                 </div>
               )}
             </div>
 
-            <ArrowRight className="h-4 w-4 text-zinc-600 flex-shrink-0" />
+            <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
 
             <div
               className={`flex-1 rounded-md p-2 text-xs ${
                 aIsNewer === true
-                  ? "bg-zinc-800/50 text-zinc-400"
-                  : "bg-rose-500/10 border border-rose-500/20 text-rose-300"
+                  ? "bg-muted/50 text-muted-foreground"
+                  : "bg-rose-500/10 border border-rose-500/20 text-rose-500 dark:text-rose-300"
               }`}
             >
               <div className="font-medium truncate">
                 {contradiction.value_b}
               </div>
-              <div className="mt-1 text-[10px] text-zinc-500 truncate">
+              <div className="mt-1 text-[10px] text-muted-foreground truncate">
                 {contradiction.doc_b_filename}
               </div>
               {contradiction.doc_b_date && (
-                <div className="text-[10px] text-zinc-600">
+                <div className="text-[10px] text-muted-foreground/70">
                   {new Date(contradiction.doc_b_date).toLocaleDateString()}
                 </div>
               )}
@@ -92,6 +92,12 @@ export function ContradictionPopover({
                   ? contradiction.doc_a_filename
                   : contradiction.doc_b_filename}
               </span>
+            </div>
+          )}
+
+          {contradiction.reason && (
+            <div className="rounded-md bg-muted/50 p-2 text-xs text-muted-foreground">
+              {contradiction.reason}
             </div>
           )}
 

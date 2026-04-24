@@ -336,6 +336,70 @@ class TestCsvIngester:
         assert "Caf" in result.text
 
 
+class TestCsvIngesterRows:
+    def test_ingest_rows_basic(self, tmp_path: Path):
+        content = "Meeting,Date,Notes\nBoard Q1,2024-03-15,Revenue up\nBoard Q2,2024-06-15,Hired CEO\n"
+        csv_path = _create_test_csv(tmp_path / "meetings.csv", content=content)
+        ingester = CsvIngester()
+        results = ingester.ingest_rows(csv_path, "store/meetings.csv")
+
+        assert len(results) == 2
+        assert results[0].original_filename == "meetings.csv [Row 1]"
+        assert results[1].original_filename == "meetings.csv [Row 2]"
+        assert "Meeting: Board Q1" in results[0].text
+        assert "Date: 2024-03-15" in results[0].text
+        assert "Notes: Revenue up" in results[0].text
+        assert "Meeting: Board Q2" in results[1].text
+
+    def test_ingest_rows_preserves_file_type(self, tmp_path: Path):
+        content = "A,B\n1,2\n"
+        csv_path = _create_test_csv(tmp_path / "data.csv", content=content)
+        ingester = CsvIngester()
+        results = ingester.ingest_rows(csv_path, "store/data.csv")
+
+        assert len(results) == 1
+        assert results[0].file_type == "csv"
+        assert results[0].page_count == 1
+
+    def test_ingest_rows_header_only_falls_back(self, tmp_path: Path):
+        content = "Col1,Col2\n"
+        csv_path = _create_test_csv(tmp_path / "empty.csv", content=content)
+        ingester = CsvIngester()
+        results = ingester.ingest_rows(csv_path, "store/empty.csv")
+
+        assert len(results) == 1
+        assert results[0].original_filename == "empty.csv"
+
+    def test_ingest_rows_single_row(self, tmp_path: Path):
+        content = "Name,Value\nAlpha,100\n"
+        csv_path = _create_test_csv(tmp_path / "single.csv", content=content)
+        ingester = CsvIngester()
+        results = ingester.ingest_rows(csv_path, "store/single.csv")
+
+        assert len(results) == 1
+        assert results[0].original_filename == "single.csv [Row 1]"
+        assert "Name: Alpha" in results[0].text
+        assert "Value: 100" in results[0].text
+
+    def test_ingest_rows_empty_cells(self, tmp_path: Path):
+        content = "A,B,C\n1,,3\n"
+        csv_path = _create_test_csv(tmp_path / "sparse.csv", content=content)
+        ingester = CsvIngester()
+        results = ingester.ingest_rows(csv_path, "store/sparse.csv")
+
+        assert len(results) == 1
+        assert "B: " in results[0].text
+
+    def test_ingest_rows_more_cols_than_headers(self, tmp_path: Path):
+        content = "A,B\n1,2,3\n"
+        csv_path = _create_test_csv(tmp_path / "extra.csv", content=content)
+        ingester = CsvIngester()
+        results = ingester.ingest_rows(csv_path, "store/extra.csv")
+
+        assert len(results) == 1
+        assert "Column 3: 3" in results[0].text
+
+
 # ---------------------------------------------------------------------------
 # Test: XLS ingestion
 # ---------------------------------------------------------------------------
@@ -541,3 +605,42 @@ class TestStoreAndIngest:
 
         with pytest.raises(ValueError, match="Unsupported file extension"):
             store_and_ingest("data.pptx", b"dummy")
+
+
+class TestStoreAndIngestCsvRows:
+    def test_csv_rows_creates_multiple_documents(self, tmp_path: Path, monkeypatch):
+        _patch_settings(monkeypatch, tmp_path)
+
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+
+        from backend.database import Base
+        from backend.models import Document
+
+        engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+        Base.metadata.create_all(bind=engine)
+        TestSession = sessionmaker(bind=engine)
+        monkeypatch.setattr("backend.ingestion.service.SessionLocal", TestSession)
+
+        csv_content = b"Meeting,Date\nBoard Q1,2024-03-15\nBoard Q2,2024-06-15\n"
+
+        from backend.ingestion.service import store_and_ingest_csv_rows
+
+        results = store_and_ingest_csv_rows("meetings.csv", csv_content)
+
+        assert len(results) == 2
+        doc1, ingested1 = results[0]
+        doc2, ingested2 = results[1]
+
+        assert doc1.original_filename == "meetings.csv [Row 1]"
+        assert doc2.original_filename == "meetings.csv [Row 2]"
+        assert doc1.file_type == "csv"
+        assert doc1.id != doc2.id
+
+        assert "Meeting: Board Q1" in ingested1.text
+        assert "Meeting: Board Q2" in ingested2.text
+
+        session = TestSession()
+        db_docs = session.query(Document).all()
+        assert len(db_docs) == 2
+        session.close()

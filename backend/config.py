@@ -34,10 +34,15 @@ class Settings(BaseSettings):
     pdf_render_dpi: int = 150
     word_chars_per_page: int = 3000
 
-    # --- Chunking ---
+    # --- Chunking & Embedding ---
     chunk_size: int = 500
     chunk_overlap: int = 100
     words_per_page: int = 300
+    enable_embeddings: bool = False
+
+    # --- Concurrency ---
+    llm_concurrency: int = 10
+    embedding_concurrency: int = 10
 
     # --- Chat ---
     chat_history_limit: int = 10

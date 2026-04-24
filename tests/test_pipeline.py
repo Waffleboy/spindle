@@ -261,11 +261,17 @@ class TestParseJsonResponse:
 
 class TestStep1DocType:
     @pytest.mark.asyncio
-    async def test_detect_doc_type(self, db_session, sample_documents, db_documents):
-        mock_response = _make_llm_response("Quarterly Investor Report for a Public Company")
+    async def test_detect_doc_type_with_dates(self, db_session, sample_documents, db_documents):
+        llm_response = json.dumps({
+            "doc_type": "Quarterly Investor Report for a Public Company",
+            "document_dates": [
+                {"filename": "report_q1_2024.pdf", "date": "2024-03-31"},
+                {"filename": "report_q2_2024.pdf", "date": "2024-06-30"},
+            ],
+        })
 
         with patch("backend.pipeline.step1_doc_type.llm_call", new_callable=AsyncMock) as mock_llm:
-            mock_llm.return_value = "Quarterly Investor Report for a Public Company"
+            mock_llm.return_value = llm_response
 
             from backend.pipeline.step1_doc_type import detect_doc_type
 
@@ -279,15 +285,34 @@ class TestStep1DocType:
             assert result == "Quarterly Investor Report for a Public Company"
             mock_llm.assert_called_once()
 
-            # Verify DB records were updated
-            for doc_id in doc_ids:
-                doc = db_session.query(Document).filter(Document.id == doc_id).first()
-                assert doc.detected_doc_type == "Quarterly Investor Report for a Public Company"
+            # Verify DB records were updated with doc type and report dates
+            doc1 = db_session.query(Document).filter(Document.id == doc_ids[0]).first()
+            assert doc1.detected_doc_type == "Quarterly Investor Report for a Public Company"
+            assert doc1.report_date is not None
+            assert doc1.report_date.year == 2024
+            assert doc1.report_date.month == 3
+            assert doc1.report_date.day == 31
+
+            doc2 = db_session.query(Document).filter(Document.id == doc_ids[1]).first()
+            assert doc2.detected_doc_type == "Quarterly Investor Report for a Public Company"
+            assert doc2.report_date is not None
+            assert doc2.report_date.year == 2024
+            assert doc2.report_date.month == 6
+            assert doc2.report_date.day == 30
 
     @pytest.mark.asyncio
-    async def test_detect_doc_type_strips_quotes(self, db_session, sample_documents, db_documents):
+    async def test_detect_doc_type_null_dates(self, db_session, sample_documents, db_documents):
+        """When LLM returns null for a date, report_date should remain None."""
+        llm_response = json.dumps({
+            "doc_type": "Quarterly Report",
+            "document_dates": [
+                {"filename": "report_q1_2024.pdf", "date": None},
+                {"filename": "report_q2_2024.pdf", "date": "2024-06-30"},
+            ],
+        })
+
         with patch("backend.pipeline.step1_doc_type.llm_call", new_callable=AsyncMock) as mock_llm:
-            mock_llm.return_value = '"Quarterly Report"'
+            mock_llm.return_value = llm_response
 
             from backend.pipeline.step1_doc_type import detect_doc_type
 
@@ -299,6 +324,89 @@ class TestStep1DocType:
             )
 
             assert result == "Quarterly Report"
+
+            doc1 = db_session.query(Document).filter(Document.id == doc_ids[0]).first()
+            assert doc1.report_date is None
+
+            doc2 = db_session.query(Document).filter(Document.id == doc_ids[1]).first()
+            assert doc2.report_date is not None
+            assert doc2.report_date.month == 6
+
+    @pytest.mark.asyncio
+    async def test_detect_doc_type_fallback_on_invalid_json(self, db_session, sample_documents, db_documents):
+        """When LLM returns non-JSON, fall back to treating it as plain doc_type string."""
+        with patch("backend.pipeline.step1_doc_type.llm_call", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = "Quarterly Investor Report for a Public Company"
+
+            from backend.pipeline.step1_doc_type import detect_doc_type
+
+            doc_ids = [d.id for d in db_documents]
+            result = await detect_doc_type(
+                documents=sample_documents,
+                document_ids=doc_ids,
+                db=db_session,
+            )
+
+            assert result == "Quarterly Investor Report for a Public Company"
+
+            # Doc type should still be set, but no report_date
+            for doc_id in doc_ids:
+                doc = db_session.query(Document).filter(Document.id == doc_id).first()
+                assert doc.detected_doc_type == "Quarterly Investor Report for a Public Company"
+                assert doc.report_date is None
+
+    @pytest.mark.asyncio
+    async def test_detect_doc_type_strips_quotes(self, db_session, sample_documents, db_documents):
+        llm_response = json.dumps({
+            "doc_type": '"Quarterly Report"',
+            "document_dates": [],
+        })
+
+        with patch("backend.pipeline.step1_doc_type.llm_call", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = llm_response
+
+            from backend.pipeline.step1_doc_type import detect_doc_type
+
+            doc_ids = [d.id for d in db_documents]
+            result = await detect_doc_type(
+                documents=sample_documents,
+                document_ids=doc_ids,
+                db=db_session,
+            )
+
+            assert result == "Quarterly Report"
+
+    @pytest.mark.asyncio
+    async def test_detect_doc_type_invalid_date_string(self, db_session, sample_documents, db_documents):
+        """Unparseable date strings should be silently ignored (report_date stays None)."""
+        llm_response = json.dumps({
+            "doc_type": "Annual Report",
+            "document_dates": [
+                {"filename": "report_q1_2024.pdf", "date": "not-a-date"},
+                {"filename": "report_q2_2024.pdf", "date": "2024-12-31"},
+            ],
+        })
+
+        with patch("backend.pipeline.step1_doc_type.llm_call", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = llm_response
+
+            from backend.pipeline.step1_doc_type import detect_doc_type
+
+            doc_ids = [d.id for d in db_documents]
+            result = await detect_doc_type(
+                documents=sample_documents,
+                document_ids=doc_ids,
+                db=db_session,
+            )
+
+            assert result == "Annual Report"
+
+            doc1 = db_session.query(Document).filter(Document.id == doc_ids[0]).first()
+            assert doc1.report_date is None  # unparseable date
+
+            doc2 = db_session.query(Document).filter(Document.id == doc_ids[1]).first()
+            assert doc2.report_date is not None
+            assert doc2.report_date.month == 12
 
 
 # ---------------------------------------------------------------------------
@@ -388,8 +496,12 @@ class TestStep3Extraction:
         fake_embedding = np.random.randn(16).tolist()
         embedding_response = _make_embedding_response(["dummy"] * 5, dim=16)
 
+        from backend.config import Settings
+        test_settings = Settings(enable_embeddings=True)
+
         with patch("backend.pipeline.step3_extraction.llm_call", new_callable=AsyncMock) as mock_llm, \
-             patch("backend.pipeline.step3_extraction.litellm") as mock_litellm:
+             patch("backend.pipeline.step3_extraction.litellm") as mock_litellm, \
+             patch("backend.pipeline.step3_extraction.get_settings", return_value=test_settings):
             mock_llm.return_value = extraction_response
             mock_litellm.aembedding = AsyncMock(return_value=embedding_response)
 
@@ -410,7 +522,7 @@ class TestStep3Extraction:
             ceo_ext = next(e for e in extractions if e.dimension_name == "ceo")
             assert ceo_ext.raw_value == "John Smith"
 
-            # Verify chunks were created
+            # Verify chunks were created (embeddings enabled for this test)
             chunks = db_session.query(DocumentChunk).filter(
                 DocumentChunk.document_id == db_documents[0].id
             ).all()
@@ -518,6 +630,62 @@ class TestStep3Extraction:
             missing = next(e for e in extractions if e.dimension_name == "missing_field")
             assert missing.raw_value == ""
             assert missing.confidence == 0.0
+
+    @pytest.mark.asyncio
+    async def test_extract_unwraps_nested_llm_response(self, db_session, db_documents):
+        """Test extraction when LLM wraps dimensions in an outer object."""
+        taxonomy = TaxonomySchema(
+            corpus_id=str(uuid.uuid4()),
+            dimensions=[
+                {"name": "revenue", "description": "Revenue", "expected_type": "currency"},
+                {"name": "ceo", "description": "CEO name", "expected_type": "entity"},
+            ],
+            doc_type="Report",
+        )
+        db_session.add(taxonomy)
+        db_session.commit()
+        db_session.refresh(taxonomy)
+
+        doc = IngestedDocument(
+            original_filename="test.docx",
+            storage_path="data/originals/test.docx",
+            file_type="docx",
+            pages=[],
+            text="Revenue was $10M. CEO is Jane Doe. " + " ".join(["filler"] * 50),
+            metadata={},
+            page_count=1,
+        )
+
+        wrapped_response = json.dumps({
+            "extractions": {
+                "revenue": {"value": "$10M", "confidence": 0.9, "source_pages": [1]},
+                "ceo": {"value": "Jane Doe", "confidence": 0.95, "source_pages": [1]},
+            }
+        })
+        embedding_response = _make_embedding_response(["dummy"], dim=16)
+
+        with patch("backend.pipeline.step3_extraction.llm_call", new_callable=AsyncMock) as mock_llm, \
+             patch("backend.pipeline.step3_extraction.litellm") as mock_litellm:
+            mock_llm.return_value = wrapped_response
+            mock_litellm.aembedding = AsyncMock(return_value=embedding_response)
+
+            from backend.pipeline.step3_extraction import extract_document
+
+            extractions = await extract_document(
+                document=doc,
+                document_id=db_documents[0].id,
+                taxonomy=taxonomy,
+                db=db_session,
+            )
+
+            assert len(extractions) == 2
+            revenue_ext = next(e for e in extractions if e.dimension_name == "revenue")
+            assert revenue_ext.raw_value == "$10M"
+            assert revenue_ext.confidence == 0.9
+
+            ceo_ext = next(e for e in extractions if e.dimension_name == "ceo")
+            assert ceo_ext.raw_value == "Jane Doe"
+            assert ceo_ext.confidence == 0.95
 
 
 # ---------------------------------------------------------------------------
@@ -682,6 +850,30 @@ class TestStep5Contradictions:
         db_session.commit()
         db_session.refresh(taxonomy)
 
+        entity = Entity(
+            canonical_name="Acme Corp",
+            entity_type="company",
+            aliases=[],
+        )
+        db_session.add(entity)
+        db_session.commit()
+        db_session.refresh(entity)
+
+        er1 = EntityResolution(
+            entity_id=entity.id,
+            original_value="Acme Corp",
+            document_id=db_documents[0].id,
+            confidence=0.95,
+        )
+        er2 = EntityResolution(
+            entity_id=entity.id,
+            original_value="Acme Corp",
+            document_id=db_documents[1].id,
+            confidence=0.95,
+        )
+        db_session.add_all([er1, er2])
+        db_session.commit()
+
         ext1 = Extraction(
             document_id=db_documents[0].id,
             taxonomy_schema_id=taxonomy.id,
@@ -701,12 +893,13 @@ class TestStep5Contradictions:
 
         contradictions_data = [
             {
-                "entity_name": "Unknown",
+                "entity_name": "Acme Corp",
                 "dimension_name": "revenue",
                 "doc_a_value": "$5.2 billion",
                 "doc_b_value": "$4.8 billion",
                 "doc_a_id": db_documents[0].id,
                 "doc_b_id": db_documents[1].id,
+                "reason": "Same company reports different revenue figures in two documents.",
             }
         ]
         llm_response = json.dumps({"contradictions": contradictions_data})
@@ -723,6 +916,7 @@ class TestStep5Contradictions:
             assert contradictions[0].value_a == "$5.2 billion"
             assert contradictions[0].value_b == "$4.8 billion"
             assert contradictions[0].resolution_status == "unresolved"
+            assert contradictions[0].reason is not None
 
     @pytest.mark.asyncio
     async def test_no_contradictions_found(self, db_session, db_documents):
@@ -736,6 +930,30 @@ class TestStep5Contradictions:
         db_session.add(taxonomy)
         db_session.commit()
         db_session.refresh(taxonomy)
+
+        entity = Entity(
+            canonical_name="Acme Corp",
+            entity_type="company",
+            aliases=[],
+        )
+        db_session.add(entity)
+        db_session.commit()
+        db_session.refresh(entity)
+
+        er1 = EntityResolution(
+            entity_id=entity.id,
+            original_value="Acme Corp",
+            document_id=db_documents[0].id,
+            confidence=0.95,
+        )
+        er2 = EntityResolution(
+            entity_id=entity.id,
+            original_value="Acme Corp",
+            document_id=db_documents[1].id,
+            confidence=0.95,
+        )
+        db_session.add_all([er1, er2])
+        db_session.commit()
 
         ext1 = Extraction(
             document_id=db_documents[0].id,
@@ -782,6 +1000,179 @@ class TestStep5Contradictions:
         contradictions = await detect_contradictions(taxonomy=taxonomy, db=db_session)
         assert contradictions == []
 
+    @pytest.mark.asyncio
+    async def test_skips_docs_without_entity_resolution(self, db_session, db_documents):
+        """Documents with no entity resolution should not be compared."""
+        taxonomy = TaxonomySchema(
+            corpus_id=str(uuid.uuid4()),
+            dimensions=[
+                {"name": "revenue", "description": "Revenue", "expected_type": "currency"},
+            ],
+            doc_type="Report",
+        )
+        db_session.add(taxonomy)
+        db_session.commit()
+        db_session.refresh(taxonomy)
+
+        # No entity or entity resolutions created — docs have different values
+        ext1 = Extraction(
+            document_id=db_documents[0].id,
+            taxonomy_schema_id=taxonomy.id,
+            dimension_name="revenue",
+            raw_value="$5.2 billion",
+            confidence=0.95,
+        )
+        ext2 = Extraction(
+            document_id=db_documents[1].id,
+            taxonomy_schema_id=taxonomy.id,
+            dimension_name="revenue",
+            raw_value="$3.1 billion",
+            confidence=0.90,
+        )
+        db_session.add_all([ext1, ext2])
+        db_session.commit()
+
+        from backend.pipeline.step5_contradictions import detect_contradictions
+
+        # Should return empty without even calling LLM — no entity context
+        contradictions = await detect_contradictions(taxonomy=taxonomy, db=db_session)
+        assert contradictions == []
+
+    @pytest.mark.asyncio
+    async def test_cross_company_values_not_compared(self, db_session, db_documents):
+        """Values from different companies should never be compared."""
+        taxonomy = TaxonomySchema(
+            corpus_id=str(uuid.uuid4()),
+            dimensions=[
+                {"name": "revenue", "description": "Revenue", "expected_type": "currency"},
+            ],
+            doc_type="Report",
+        )
+        db_session.add(taxonomy)
+        db_session.commit()
+        db_session.refresh(taxonomy)
+
+        entity_a = Entity(canonical_name="Company A", entity_type="company", aliases=[])
+        entity_b = Entity(canonical_name="Company B", entity_type="company", aliases=[])
+        db_session.add_all([entity_a, entity_b])
+        db_session.commit()
+        db_session.refresh(entity_a)
+        db_session.refresh(entity_b)
+
+        # Doc 0 -> Company A, Doc 1 -> Company B
+        er1 = EntityResolution(
+            entity_id=entity_a.id, original_value="Company A",
+            document_id=db_documents[0].id, confidence=0.95,
+        )
+        er2 = EntityResolution(
+            entity_id=entity_b.id, original_value="Company B",
+            document_id=db_documents[1].id, confidence=0.95,
+        )
+        db_session.add_all([er1, er2])
+        db_session.commit()
+
+        ext1 = Extraction(
+            document_id=db_documents[0].id,
+            taxonomy_schema_id=taxonomy.id,
+            dimension_name="revenue",
+            raw_value="$5.2 billion",
+            confidence=0.95,
+        )
+        ext2 = Extraction(
+            document_id=db_documents[1].id,
+            taxonomy_schema_id=taxonomy.id,
+            dimension_name="revenue",
+            raw_value="$3.1 billion",
+            confidence=0.90,
+        )
+        db_session.add_all([ext1, ext2])
+        db_session.commit()
+
+        from backend.pipeline.step5_contradictions import detect_contradictions
+
+        # Each entity has only 1 doc, so no multi-doc groups exist — no LLM call
+        contradictions = await detect_contradictions(taxonomy=taxonomy, db=db_session)
+        assert contradictions == []
+
+    @pytest.mark.asyncio
+    async def test_primary_entity_prefers_company_type(self, db_session, db_documents):
+        """When a doc has both person and company entities, company is primary."""
+        taxonomy = TaxonomySchema(
+            corpus_id=str(uuid.uuid4()),
+            dimensions=[
+                {"name": "revenue", "description": "Revenue", "expected_type": "currency"},
+            ],
+            doc_type="Report",
+        )
+        db_session.add(taxonomy)
+        db_session.commit()
+        db_session.refresh(taxonomy)
+
+        company = Entity(canonical_name="Acme Corp", entity_type="company", aliases=[])
+        person = Entity(canonical_name="John Smith", entity_type="person", aliases=[])
+        db_session.add_all([company, person])
+        db_session.commit()
+        db_session.refresh(company)
+        db_session.refresh(person)
+
+        # Both docs have resolutions for both entities
+        for doc in db_documents:
+            db_session.add(EntityResolution(
+                entity_id=company.id, original_value="Acme Corp",
+                document_id=doc.id, confidence=0.90,
+            ))
+            db_session.add(EntityResolution(
+                entity_id=person.id, original_value="John Smith",
+                document_id=doc.id, confidence=0.95,
+            ))
+        db_session.commit()
+
+        ext1 = Extraction(
+            document_id=db_documents[0].id,
+            taxonomy_schema_id=taxonomy.id,
+            dimension_name="revenue",
+            raw_value="$5.2 billion",
+            confidence=0.95,
+        )
+        ext2 = Extraction(
+            document_id=db_documents[1].id,
+            taxonomy_schema_id=taxonomy.id,
+            dimension_name="revenue",
+            raw_value="$4.8 billion",
+            confidence=0.90,
+        )
+        db_session.add_all([ext1, ext2])
+        db_session.commit()
+
+        contradictions_data = [
+            {
+                "entity_name": "Acme Corp",
+                "dimension_name": "revenue",
+                "doc_a_value": "$5.2 billion",
+                "doc_b_value": "$4.8 billion",
+                "doc_a_id": db_documents[0].id,
+                "doc_b_id": db_documents[1].id,
+                "reason": "Different revenue figures.",
+            }
+        ]
+        llm_response = json.dumps({"contradictions": contradictions_data})
+
+        with patch("backend.pipeline.step5_contradictions.llm_call", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = llm_response
+
+            from backend.pipeline.step5_contradictions import detect_contradictions
+
+            contradictions = await detect_contradictions(taxonomy=taxonomy, db=db_session)
+
+            # Should group under company entity, not person, and find the contradiction
+            assert len(contradictions) == 1
+            assert contradictions[0].entity_id == company.id
+
+            # Verify the LLM prompt groups under company, not person
+            call_args = mock_llm.call_args
+            prompt_text = call_args.kwargs.get("prompt", call_args.args[0] if call_args.args else "")
+            assert "Acme Corp" in prompt_text
+
 
 # ---------------------------------------------------------------------------
 # Tests: orchestrator.py
@@ -814,8 +1205,11 @@ class TestOrchestrator:
             db.refresh(taxonomy)
             return taxonomy
 
-        async def mock_extract_document(document, document_id, taxonomy, db):
+        async def mock_fetch_extraction_data(document, taxonomy):
             call_order.append("step3")
+            return ({"revenue": {"value": "$5B", "confidence": 0.9, "source_pages": None}}, None)
+
+        def mock_save_extraction_results(document_id, taxonomy, extracted_data, chunks_with_embeddings, db):
             ext = Extraction(
                 document_id=document_id,
                 taxonomy_schema_id=taxonomy.id,
@@ -841,7 +1235,8 @@ class TestOrchestrator:
         with patch("backend.pipeline.orchestrator.detect_doc_type", side_effect=mock_detect_doc_type), \
              patch("backend.pipeline.orchestrator.match_templates", side_effect=mock_match_templates), \
              patch("backend.pipeline.orchestrator.generate_taxonomy", side_effect=mock_generate_taxonomy), \
-             patch("backend.pipeline.orchestrator.extract_document", side_effect=mock_extract_document), \
+             patch("backend.pipeline.orchestrator.fetch_extraction_data", side_effect=mock_fetch_extraction_data), \
+             patch("backend.pipeline.orchestrator.save_extraction_results", side_effect=mock_save_extraction_results), \
              patch("backend.pipeline.orchestrator.resolve_entities", side_effect=mock_resolve_entities), \
              patch("backend.pipeline.orchestrator.detect_contradictions", side_effect=mock_detect_contradictions), \
              patch("backend.pipeline.orchestrator.get_ingester") as mock_ingester:
@@ -939,7 +1334,10 @@ class TestOrchestrator:
             db.refresh(taxonomy)
             return taxonomy
 
-        async def mock_extract(document, document_id, taxonomy, db):
+        async def mock_fetch(document, taxonomy):
+            return ({}, None)
+
+        def mock_save(document_id, taxonomy, extracted_data, chunks_with_embeddings, db):
             return []
 
         async def mock_resolve(taxonomy, db):
@@ -951,7 +1349,8 @@ class TestOrchestrator:
         with patch("backend.pipeline.orchestrator.detect_doc_type", side_effect=mock_detect_doc_type), \
              patch("backend.pipeline.orchestrator.match_templates", new_callable=AsyncMock, return_value=[]), \
              patch("backend.pipeline.orchestrator.generate_taxonomy", side_effect=mock_generate_taxonomy), \
-             patch("backend.pipeline.orchestrator.extract_document", side_effect=mock_extract), \
+             patch("backend.pipeline.orchestrator.fetch_extraction_data", side_effect=mock_fetch), \
+             patch("backend.pipeline.orchestrator.save_extraction_results", side_effect=mock_save), \
              patch("backend.pipeline.orchestrator.resolve_entities", side_effect=mock_resolve), \
              patch("backend.pipeline.orchestrator.detect_contradictions", side_effect=mock_contradict), \
              patch("backend.pipeline.orchestrator.get_ingester") as mock_ingester:

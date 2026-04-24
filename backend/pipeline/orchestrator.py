@@ -1,9 +1,11 @@
 """Pipeline orchestrator — runs the full 5-step pipeline on a set of documents."""
 
+import asyncio
 import logging
 import traceback
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +15,7 @@ from backend.ingestion.common import IngestedDocument, get_ingester
 from backend.models import Document
 from backend.pipeline.step1_doc_type import detect_doc_type
 from backend.pipeline.step2_taxonomy import generate_taxonomy
-from backend.pipeline.step3_extraction import extract_document
+from backend.pipeline.step3_extraction import fetch_extraction_data, save_extraction_results
 from backend.pipeline.step4_entities import resolve_entities
 from backend.pipeline.step5_contradictions import detect_contradictions
 from backend.pipeline.template_matching import match_templates
@@ -84,25 +86,22 @@ async def run_pipeline(
         # Re-ingest documents to get IngestedDocument objects
         ingested_docs = []
         for doc_record in documents_db:
-            try:
+            if doc_record.source_text:
+                ingested = IngestedDocument(
+                    original_filename=doc_record.original_filename,
+                    storage_path=doc_record.storage_path,
+                    file_type=doc_record.file_type,
+                    pages=[],
+                    text=doc_record.source_text,
+                    page_count=doc_record.page_count or 1,
+                )
+            else:
                 ingester = get_ingester(doc_record.file_type)
-                ingested = ingester.ingest(
-                    doc_record.storage_path, doc_record.storage_path
-                )
-                ingested_docs.append(ingested)
-            except Exception:
-                # Create a minimal IngestedDocument from DB record
-                ingested_docs.append(
-                    IngestedDocument(
-                        original_filename=doc_record.original_filename,
-                        storage_path=doc_record.storage_path,
-                        file_type=doc_record.file_type,
-                        pages=[],
-                        text="",
-                        metadata={},
-                        page_count=doc_record.page_count or 0,
-                    )
-                )
+                file_path = Path(doc_record.storage_path)
+                if not file_path.is_absolute():
+                    file_path = Path.cwd() / file_path
+                ingested = ingester.ingest(file_path, doc_record.storage_path)
+            ingested_docs.append(ingested)
 
         # Step 1: Document Type Detection
         _update_status(run_id, 1, "Detecting document types...", 10)
@@ -134,28 +133,29 @@ async def run_pipeline(
         )
 
         # Step 3: Per-Document Extraction
-        _update_status(run_id, 3, "Extracting data from documents...", 40)
+        # Phase A: parallel LLM + embedding calls (no DB writes)
+        _update_status(run_id, 3, f"Extracting data from {len(ingested_docs)} documents...", 40)
+
+        io_results = await asyncio.gather(
+            *(fetch_extraction_data(ing, taxonomy) for ing in ingested_docs)
+        )
+
+        # Phase B: sequential DB writes
+        _update_status(run_id, 3, "Saving extraction results...", 65)
         all_extractions = []
-        for i, (ingested, doc_id) in enumerate(zip(ingested_docs, document_ids)):
-            pct = 40 + int(30 * (i + 1) / len(ingested_docs))
-            _update_status(
-                run_id, 3,
-                f"Extracting document {i + 1}/{len(ingested_docs)}...",
-                pct,
-            )
-            extractions = await extract_document(
-                document=ingested,
-                document_id=doc_id,
-                taxonomy=taxonomy,
-                db=db,
+        for doc_id, (extracted_data, chunks_with_embeddings) in zip(document_ids, io_results):
+            extractions = save_extraction_results(
+                doc_id, taxonomy, extracted_data, chunks_with_embeddings, db,
             )
             all_extractions.extend(extractions)
 
-            # Mark document as processed
+        _update_status(run_id, 3, "Extraction complete", 70)
+        now = datetime.now(timezone.utc)
+        for doc_id in document_ids:
             doc_record = db.query(Document).filter(Document.id == doc_id).first()
             if doc_record:
-                doc_record.processed_at = datetime.now(timezone.utc)
-                db.commit()
+                doc_record.processed_at = now
+        db.commit()
 
         # Step 4: Entity Resolution
         _update_status(run_id, 4, "Resolving entities...", 75)

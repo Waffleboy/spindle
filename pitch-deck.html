@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spindle — AI-Powered Document Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #ffffff;
+            --bg-alt: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f8fafc;
+            --text: #0f172a;
+            --text-dim: #64748b;
+            --accent: #2563eb;
+            --accent-light: #dbeafe;
+            --accent-glow: rgba(37, 99, 235, 0.08);
+            --red: #dc2626;
+            --red-glow: rgba(220, 38, 38, 0.08);
+            --amber: #d97706;
+            --amber-glow: rgba(217, 119, 6, 0.08);
+            --green: #16a34a;
+            --green-glow: rgba(22, 163, 74, 0.08);
+            --cyan: #0ea5e9;
+            --border: #e2e8f0;
+
+            --font-display: 'Instrument Serif', serif;
+            --font-body: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+
+            --title-size: clamp(2.5rem, 6vw, 5.5rem);
+            --h2-size: clamp(1.8rem, 4vw, 3.2rem);
+            --h3-size: clamp(1rem, 2vw, 1.4rem);
+            --body-size: clamp(0.8rem, 1.4vw, 1.1rem);
+            --small-size: clamp(0.7rem, 1vw, 0.85rem);
+            --slide-padding: clamp(1.5rem, 5vw, 5rem);
+            --content-gap: clamp(1rem, 2.5vw, 2.5rem);
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html {
+            height: 100%;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+            overflow-x: hidden;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg);
+            color: var(--text);
+            height: 100%;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            padding: var(--slide-padding);
+        }
+
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-height: 100%;
+            overflow: hidden;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* ========== PROGRESS BAR ========== */
+        .progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #2563eb, #3b82f6);
+            z-index: 100;
+            transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 1px 6px rgba(37, 99, 235, 0.3);
+        }
+
+        /* ========== NAV DOTS ========== */
+        .nav-dots {
+            position: fixed;
+            right: clamp(0.75rem, 2vw, 1.5rem);
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 0;
+        }
+
+        .nav-dot.active {
+            background: var(--accent);
+            box-shadow: 0 0 8px rgba(37, 99, 235, 0.3);
+            transform: scale(1.3);
+        }
+
+        .nav-dot:hover { background: #94a3b8; }
+
+        /* ========== KEYBOARD HINT ========== */
+        .keyboard-hint {
+            position: fixed;
+            bottom: clamp(0.75rem, 2vh, 1.5rem);
+            right: clamp(0.75rem, 2vw, 1.5rem);
+            font-family: var(--font-mono);
+            font-size: var(--small-size);
+            color: var(--text-dim);
+            opacity: 0.5;
+            z-index: 100;
+        }
+
+        .keyboard-hint kbd {
+            display: inline-block;
+            padding: 2px 6px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: inherit;
+            margin: 0 2px;
+            background: var(--bg-alt);
+        }
+
+        /* ========== ANIMATIONS ========== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+                        transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .slide.visible .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .reveal:nth-child(1) { transition-delay: 0.05s; }
+        .reveal:nth-child(2) { transition-delay: 0.15s; }
+        .reveal:nth-child(3) { transition-delay: 0.25s; }
+        .reveal:nth-child(4) { transition-delay: 0.35s; }
+        .reveal:nth-child(5) { transition-delay: 0.45s; }
+        .reveal:nth-child(6) { transition-delay: 0.55s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 var(--accent-glow); }
+            70% { box-shadow: 0 0 0 12px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* ========== TYPOGRAPHY ========== */
+        h1 {
+            font-family: var(--font-display);
+            font-size: var(--title-size);
+            font-weight: 400;
+            line-height: 1.05;
+            letter-spacing: -0.02em;
+        }
+
+        h2 {
+            font-family: var(--font-display);
+            font-size: var(--h2-size);
+            font-weight: 400;
+            line-height: 1.15;
+            letter-spacing: -0.01em;
+        }
+
+        h3 {
+            font-family: var(--font-body);
+            font-size: var(--h3-size);
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        .label {
+            font-family: var(--font-mono);
+            font-size: var(--small-size);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--accent);
+        }
+
+        .subtitle {
+            font-size: clamp(1rem, 2vw, 1.35rem);
+            color: var(--text-dim);
+            line-height: 1.5;
+            max-width: 640px;
+        }
+
+        /* ========== SLIDE 1: TITLE ========== */
+        .title-slide {
+            text-align: center;
+            align-items: center;
+        }
+
+        .title-slide .slide-content {
+            align-items: center;
+            gap: var(--content-gap);
+        }
+
+        .logo-mark {
+            width: clamp(56px, 7vw, 84px);
+            height: clamp(56px, 7vw, 84px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .logo-mark svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .title-gradient {
+            background: linear-gradient(135deg, #0f172a 0%, #2563eb 50%, #0ea5e9 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradient-shift 6s ease infinite;
+        }
+
+        /* ========== SLIDE 2: PROBLEM ========== */
+        .problem-slide { background: var(--bg-alt); }
+
+        .problem-quote {
+            font-family: var(--font-display);
+            font-style: italic;
+            font-size: clamp(1.2rem, 2.8vw, 2.2rem);
+            line-height: 1.4;
+            color: var(--text);
+            max-width: 800px;
+            position: relative;
+            padding-left: clamp(1rem, 3vw, 2rem);
+            border-left: 3px solid var(--accent);
+        }
+
+        .pain-points {
+            display: flex;
+            gap: clamp(0.75rem, 2vw, 1.5rem);
+            margin-top: var(--content-gap);
+            flex-wrap: wrap;
+        }
+
+        .pain-point {
+            flex: 1;
+            min-width: min(100%, 200px);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(0.75rem, 2vw, 1.25rem);
+            display: flex;
+            align-items: flex-start;
+            gap: clamp(0.5rem, 1vw, 0.75rem);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+
+        .pain-icon {
+            font-size: clamp(1.2rem, 2vw, 1.5rem);
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .pain-point p {
+            font-size: var(--body-size);
+            color: var(--text-dim);
+            line-height: 1.4;
+        }
+
+        .pain-point strong {
+            color: var(--text);
+            display: block;
+            margin-bottom: 2px;
+            font-size: var(--body-size);
+        }
+
+        /* ========== SLIDE 3: SOLUTION ========== */
+        .solution-slide .slide-content {
+            gap: var(--content-gap);
+        }
+
+        .demo-frame {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            max-width: 900px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+        }
+
+        .demo-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: clamp(6px, 1vw, 10px) clamp(8px, 1.5vw, 14px);
+            background: var(--bg-alt);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .demo-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #cbd5e1;
+        }
+
+        .demo-content {
+            padding: clamp(1rem, 2.5vw, 2rem);
+            display: flex;
+            gap: clamp(0.5rem, 1.5vw, 1rem);
+            align-items: stretch;
+        }
+
+        .demo-panel {
+            flex: 1;
+            background: var(--bg-alt);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: clamp(0.6rem, 1.5vw, 1rem);
+        }
+
+        .demo-panel-label {
+            font-family: var(--font-mono);
+            font-size: clamp(0.55rem, 0.8vw, 0.7rem);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            margin-bottom: clamp(0.4rem, 1vw, 0.6rem);
+        }
+
+        .demo-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: clamp(3px, 0.5vw, 5px) 0;
+            font-size: clamp(0.6rem, 0.9vw, 0.8rem);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .demo-row:last-child { border-bottom: none; }
+
+        .demo-val { color: var(--text-dim); }
+
+        .demo-conflict {
+            color: var(--red);
+            font-weight: 600;
+            text-decoration: underline wavy var(--red);
+            text-underline-offset: 3px;
+        }
+
+        .demo-entity {
+            color: var(--amber);
+            font-weight: 500;
+        }
+
+        /* ========== ALTERNATING SLIDE BACKGROUNDS ========== */
+        .slide:nth-child(odd) { background: var(--bg); }
+        .slide:nth-child(even) { background: var(--bg-alt); }
+
+        /* ========== SLIDE 4: PIPELINE ========== */
+        .pipeline-steps {
+            display: flex;
+            gap: 0;
+            align-items: stretch;
+            margin-top: var(--content-gap);
+            max-width: 1100px;
+        }
+
+        .pipe-step {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            padding: clamp(0.5rem, 1.5vw, 1rem) clamp(0.3rem, 0.8vw, 0.5rem);
+        }
+
+        .pipe-step::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            width: 1px;
+            height: 40%;
+            background: var(--border);
+            transform: translateY(-50%);
+        }
+
+        .pipe-step:last-child::after { display: none; }
+
+        .pipe-num {
+            width: clamp(28px, 3.5vw, 40px);
+            height: clamp(28px, 3.5vw, 40px);
+            border-radius: 50%;
+            background: var(--accent-light);
+            border: 2px solid var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-size: var(--small-size);
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: clamp(0.3rem, 0.8vw, 0.6rem);
+            flex-shrink: 0;
+        }
+
+        .pipe-step h3 {
+            font-size: clamp(0.7rem, 1.2vw, 0.95rem);
+            margin-bottom: 4px;
+        }
+
+        .pipe-step p {
+            font-size: clamp(0.6rem, 0.9vw, 0.78rem);
+            color: var(--text-dim);
+            line-height: 1.35;
+        }
+
+        .pipe-badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: clamp(0.5rem, 0.7vw, 0.65rem);
+            padding: 2px 8px;
+            border-radius: 99px;
+            margin-top: clamp(0.2rem, 0.5vw, 0.4rem);
+            background: var(--accent-glow);
+            color: var(--accent);
+        }
+
+        .pipe-badge.red { background: var(--red-glow); color: var(--red); }
+        .pipe-badge.amber { background: var(--amber-glow); color: var(--amber); }
+
+        /* ========== SLIDE 5: FEATURES ========== */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: clamp(0.6rem, 1.5vw, 1.25rem);
+            margin-top: var(--content-gap);
+            max-width: 1000px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: clamp(0.8rem, 2vw, 1.5rem);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .feature-card:nth-child(1)::before { background: var(--accent); }
+        .feature-card:nth-child(2)::before { background: var(--red); }
+        .feature-card:nth-child(3)::before { background: var(--amber); }
+        .feature-card:nth-child(4)::before { background: var(--green); }
+
+        .feature-card:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            transform: translateY(-2px);
+        }
+
+        .feature-icon {
+            font-size: clamp(1.2rem, 2vw, 1.6rem);
+            margin-bottom: clamp(0.3rem, 0.8vw, 0.5rem);
+        }
+
+        .feature-card h3 {
+            font-size: clamp(0.85rem, 1.3vw, 1.1rem);
+            margin-bottom: clamp(0.2rem, 0.5vw, 0.4rem);
+        }
+
+        .feature-card p {
+            font-size: var(--body-size);
+            color: var(--text-dim);
+            line-height: 1.45;
+        }
+
+        .feature-tag {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: clamp(0.5rem, 0.7vw, 0.65rem);
+            padding: 2px 8px;
+            border-radius: 99px;
+            margin-top: clamp(0.3rem, 0.6vw, 0.5rem);
+        }
+
+        .tag-blue { background: var(--accent-glow); color: var(--accent); }
+        .tag-red { background: var(--red-glow); color: var(--red); }
+        .tag-amber { background: var(--amber-glow); color: var(--amber); }
+        .tag-green { background: var(--green-glow); color: var(--green); }
+
+        /* ========== SLIDE 6: DIFFERENTIATOR ========== */
+        .diff-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(1rem, 3vw, 3rem);
+            margin-top: var(--content-gap);
+            max-width: 900px;
+        }
+
+        .diff-col h3 {
+            font-size: clamp(0.8rem, 1.2vw, 1rem);
+            margin-bottom: clamp(0.5rem, 1vw, 0.8rem);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .diff-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: clamp(0.3rem, 0.8vw, 0.6rem);
+        }
+
+        .diff-list li {
+            font-size: var(--body-size);
+            color: var(--text-dim);
+            padding-left: clamp(0.8rem, 1.5vw, 1.2rem);
+            position: relative;
+            line-height: 1.4;
+        }
+
+        .diff-list.old li::before {
+            content: '×';
+            position: absolute;
+            left: 0;
+            color: var(--red);
+            font-weight: 700;
+        }
+
+        .diff-list.new li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        /* ========== SLIDE 7: VISION / CLOSE ========== */
+        .close-slide {
+            text-align: center;
+        }
+
+        .close-slide .slide-content {
+            align-items: center;
+            gap: var(--content-gap);
+        }
+
+        .connector-row {
+            display: flex;
+            gap: clamp(0.5rem, 1.5vw, 1rem);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .connector-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: clamp(6px, 1vw, 10px) clamp(10px, 1.5vw, 16px);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 99px;
+            font-size: var(--small-size);
+            color: var(--text-dim);
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+
+        .connector-pill:hover {
+            border-color: var(--accent);
+            color: var(--text);
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+        }
+
+        .connector-pill .pill-icon { font-size: clamp(0.9rem, 1.2vw, 1.1rem); }
+
+        .close-tagline {
+            font-family: var(--font-display);
+            font-style: italic;
+            font-size: clamp(1.1rem, 2.5vw, 1.8rem);
+            color: var(--text-dim);
+            max-width: 600px;
+        }
+
+        .cta-row {
+            display: flex;
+            gap: clamp(0.5rem, 1vw, 0.75rem);
+            align-items: center;
+        }
+
+        .cta-badge {
+            font-family: var(--font-mono);
+            font-size: var(--small-size);
+            padding: clamp(6px, 1vw, 8px) clamp(12px, 2vw, 20px);
+            border-radius: 8px;
+            background: var(--accent);
+            color: white;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .cta-sub {
+            font-size: var(--small-size);
+            color: var(--text-dim);
+        }
+
+        /* ========== GRID BG ========== */
+        .grid-bg::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(#f1f5f9 1px, transparent 1px),
+                linear-gradient(90deg, #f1f5f9 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        .glow-tl::after {
+            content: '';
+            position: absolute;
+            top: -20%;
+            left: -10%;
+            width: 50%;
+            height: 50%;
+            background: radial-gradient(circle, rgba(37, 99, 235, 0.06) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .glow-br::after {
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            right: -10%;
+            width: 50%;
+            height: 50%;
+            background: radial-gradient(circle, rgba(14, 165, 233, 0.06) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 700px) {
+            .features-grid { grid-template-columns: 1fr; }
+            .diff-grid { grid-template-columns: 1fr; }
+            .pipeline-steps { flex-direction: column; gap: clamp(0.3rem, 1vw, 0.5rem); }
+            .pipe-step::after { display: none; }
+            .pipe-step { flex-direction: row; text-align: left; gap: clamp(0.5rem, 1.5vw, 0.8rem); }
+            .demo-content { flex-direction: column; }
+            .pain-points { flex-direction: column; }
+        }
+
+        @media (max-height: 700px) {
+            :root {
+                --slide-padding: clamp(1rem, 3vw, 2.5rem);
+                --content-gap: clamp(0.5rem, 1.5vw, 1.25rem);
+            }
+        }
+
+        @media (max-height: 600px) {
+            :root {
+                --slide-padding: clamp(0.75rem, 2.5vw, 1.5rem);
+                --content-gap: clamp(0.4rem, 1vw, 0.75rem);
+                --title-size: clamp(1.5rem, 5vw, 3rem);
+                --h2-size: clamp(1.2rem, 3vw, 2rem);
+            }
+            .nav-dots, .keyboard-hint { display: none; }
+        }
+
+        @media (max-height: 500px) {
+            :root {
+                --slide-padding: clamp(0.5rem, 2vw, 1rem);
+                --title-size: clamp(1.2rem, 4vw, 2rem);
+                --body-size: clamp(0.65rem, 1vw, 0.85rem);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+            html { scroll-behavior: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<nav class="nav-dots" id="navDots"></nav>
+
+<div class="keyboard-hint"><kbd>↑</kbd> <kbd>↓</kbd> or <kbd>Space</kbd></div>
+
+<!-- ===== SLIDE 1: TITLE ===== -->
+<section class="slide title-slide grid-bg glow-tl" data-slide="0">
+    <div class="slide-content">
+        <div class="logo-mark reveal">
+            <svg viewBox="10 20 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 28 38 C 40 55, 60 70, 92 95" stroke="#c49a6c" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.6"/>
+                <path d="M 172 32 C 155 52, 130 72, 108 94" stroke="#d4a574" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
+                <path d="M 18 118 C 38 112, 62 106, 90 100" stroke="#b87333" stroke-width="2.8" stroke-linecap="round" fill="none" opacity="0.6"/>
+                <path d="M 182 128 C 160 120, 134 110, 110 102" stroke="#c49a6c" stroke-width="2.2" stroke-linecap="round" fill="none" opacity="0.6"/>
+                <path d="M 52 178 C 62 158, 78 132, 95 108" stroke="#6aaa9c" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.5"/>
+                <path d="M 152 182 C 142 160, 124 134, 106 108" stroke="#c47a7a" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.5"/>
+                <path d="M 100 82 L 114 100 L 100 118 L 86 100 Z" fill="#c49a6c"/>
+                <circle cx="28" cy="38" r="5" fill="#c49a6c" opacity="0.7"/>
+                <circle cx="172" cy="32" r="4.5" fill="#d4a574" opacity="0.6"/>
+                <circle cx="18" cy="118" r="5.5" fill="#b87333" opacity="0.7"/>
+                <circle cx="182" cy="128" r="4.5" fill="#c49a6c" opacity="0.6"/>
+                <circle cx="52" cy="178" r="4.5" fill="#6aaa9c" opacity="0.6"/>
+                <circle cx="152" cy="182" r="4.5" fill="#c47a7a" opacity="0.5"/>
+            </svg>
+        </div>
+        <h1 class="reveal"><span class="title-gradient">Spindle</span></h1>
+        <p class="subtitle reveal">AI-powered document intelligence that reads your reports,<br>discovers what matters, and catches what you'd miss.</p>
+        <p class="label reveal" style="margin-top: clamp(0.5rem, 1vw, 1rem);">Upload → Understand → Act</p>
+    </div>
+</section>
+
+<!-- ===== SLIDE 2: THE PROBLEM ===== -->
+<section class="slide problem-slide glow-br" data-slide="1">
+    <div class="slide-content">
+        <p class="label reveal">The problem</p>
+        <div class="problem-quote reveal" style="margin-top: clamp(0.5rem, 1vw, 0.75rem);">
+            Every analyst spends hours cross-referencing reports manually — checking if revenue numbers match, figuring out that "Tan Kim Bock" and "Bock Kim Tan" are the same person, spotting which report supersedes which.
+        </div>
+        <div class="pain-points">
+            <div class="pain-point reveal">
+                <span class="pain-icon">⏱</span>
+                <div>
+                    <strong>Manual cross-referencing</strong>
+                    <p>Hours spent comparing values across documents that should take seconds</p>
+                </div>
+            </div>
+            <div class="pain-point reveal">
+                <span class="pain-icon">👤</span>
+                <div>
+                    <strong>Entity confusion</strong>
+                    <p>Same person, different names across reports — missed connections everywhere</p>
+                </div>
+            </div>
+            <div class="pain-point reveal">
+                <span class="pain-icon">📉</span>
+                <div>
+                    <strong>Silent contradictions</strong>
+                    <p>Revenue changed between July and August. Nobody noticed until it mattered.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 3: THE SOLUTION ===== -->
+<section class="slide solution-slide grid-bg glow-tl" data-slide="2">
+    <div class="slide-content">
+        <p class="label reveal">The solution</p>
+        <h2 class="reveal" style="margin-top: clamp(0.3rem, 0.8vw, 0.5rem);">30 seconds. Zero configuration.</h2>
+        <p class="subtitle reveal">Upload documents — Spindle reads them, discovers the schema, extracts structured data, and flags every conflict and entity match automatically.</p>
+
+        <div class="demo-frame reveal" style="margin-top: clamp(0.5rem, 1.5vw, 1rem);">
+            <div class="demo-bar">
+                <span class="demo-dot"></span>
+                <span class="demo-dot"></span>
+                <span class="demo-dot"></span>
+                <span style="font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-dim); margin-left: 8px;">spindle — taxonomy view</span>
+            </div>
+            <div class="demo-content">
+                <div class="demo-panel" style="flex: 0.6;">
+                    <div class="demo-panel-label">Discovered Dimensions</div>
+                    <div class="demo-row"><span>Company Name</span> <span class="demo-val">text</span></div>
+                    <div class="demo-row"><span>Revenue</span> <span class="demo-val">currency</span></div>
+                    <div class="demo-row"><span>Key Personnel</span> <span class="demo-val">entity_list</span></div>
+                    <div class="demo-row"><span>Risk Factors</span> <span class="demo-val">text_list</span></div>
+                    <div class="demo-row"><span>Report Period</span> <span class="demo-val">date_range</span></div>
+                </div>
+                <div class="demo-panel" style="flex: 1;">
+                    <div class="demo-panel-label">Extractions</div>
+                    <div class="demo-row"><span>Revenue (Aug)</span> <span class="demo-conflict">$4.2M ⚠</span></div>
+                    <div class="demo-row"><span>Revenue (Jul)</span> <span class="demo-val">$3.9M</span></div>
+                    <div class="demo-row"><span>CEO</span> <span class="demo-entity">Tan Kim Bock ≈ Bock Kim Tan</span></div>
+                    <div class="demo-row"><span>Risk</span> <span class="demo-val">Market downturn, FX exposure</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 4: PIPELINE ===== -->
+<section class="slide grid-bg" data-slide="3">
+    <div class="slide-content">
+        <p class="label reveal">How it works</p>
+        <h2 class="reveal" style="margin-top: clamp(0.3rem, 0.8vw, 0.5rem);">Five-step intelligence pipeline</h2>
+        <div class="pipeline-steps reveal">
+            <div class="pipe-step">
+                <div class="pipe-num">1</div>
+                <h3>Detect</h3>
+                <p>Identifies document type and extracts report dates</p>
+                <span class="pipe-badge">LLM</span>
+            </div>
+            <div class="pipe-step">
+                <div class="pipe-num">2</div>
+                <h3>Discover</h3>
+                <p>Autonomously generates taxonomy dimensions</p>
+                <span class="pipe-badge">Zero-config</span>
+            </div>
+            <div class="pipe-step">
+                <div class="pipe-num">3</div>
+                <h3>Extract</h3>
+                <p>Structured values per document with confidence scores</p>
+                <span class="pipe-badge">Parallel</span>
+            </div>
+            <div class="pipe-step">
+                <div class="pipe-num">4</div>
+                <h3>Resolve</h3>
+                <p>Cross-document entity matching with human review</p>
+                <span class="pipe-badge amber">HITL</span>
+            </div>
+            <div class="pipe-step">
+                <div class="pipe-num">5</div>
+                <h3>Contradict</h3>
+                <p>Temporal-aware conflict detection across reports</p>
+                <span class="pipe-badge red">Alerts</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 5: KEY FEATURES ===== -->
+<section class="slide glow-br" data-slide="4">
+    <div class="slide-content">
+        <p class="label reveal">Key capabilities</p>
+        <h2 class="reveal" style="margin-top: clamp(0.3rem, 0.8vw, 0.5rem);">Intelligence, not just extraction</h2>
+        <div class="features-grid">
+            <div class="feature-card reveal">
+                <div class="feature-icon">🧬</div>
+                <h3>Autonomous Taxonomy Discovery</h3>
+                <p>No predefined schema. The system reads your documents and decides what dimensions matter. No setup wizard, no config file.</p>
+                <span class="feature-tag tag-blue">Zero-config</span>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon">⚡</div>
+                <h3>Contradiction Detection</h3>
+                <p>Cross-references every report and flags conflicting values. Knows which document is newer. Temporal context on every alert.</p>
+                <span class="feature-tag tag-red">Temporal-aware</span>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon">🔗</div>
+                <h3>Entity Resolution</h3>
+                <p>"Tan Kim Bock" = "Bock Kim Tan" — matched by context. Low-confidence matches flagged for human confirmation.</p>
+                <span class="feature-tag tag-amber">Human-in-the-loop</span>
+            </div>
+            <div class="feature-card reveal">
+                <div class="feature-icon">💬</div>
+                <h3>Hybrid Retrieval Chat</h3>
+                <p>Ask analytical questions across all reports. Combines structured DB queries with semantic search. Every answer is cited.</p>
+                <span class="feature-tag tag-green">Cited answers</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 6: WHY SPINDLE ===== -->
+<section class="slide grid-bg glow-tl" data-slide="5">
+    <div class="slide-content">
+        <p class="label reveal">Why Spindle</p>
+        <h2 class="reveal" style="margin-top: clamp(0.3rem, 0.8vw, 0.5rem);">Traditional tools vs. Spindle</h2>
+        <div class="diff-grid reveal">
+            <div class="diff-col">
+                <h3><span style="color: var(--red);">⬤</span> Before</h3>
+                <ul class="diff-list old">
+                    <li>Manually define extraction schemas</li>
+                    <li>Keyword search — no reasoning</li>
+                    <li>No cross-document awareness</li>
+                    <li>Contradictions discovered by accident</li>
+                    <li>Entity matching is someone's side job</li>
+                </ul>
+            </div>
+            <div class="diff-col">
+                <h3><span style="color: var(--green);">⬤</span> With Spindle</h3>
+                <ul class="diff-list new">
+                    <li>Schema discovered autonomously from content</li>
+                    <li>Hybrid retrieval — structured + semantic</li>
+                    <li>Every value tracked across all documents</li>
+                    <li>Contradictions flagged with temporal context</li>
+                    <li>Entities resolved automatically, reviewed by humans</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===== SLIDE 7: VISION / CLOSE ===== -->
+<section class="slide close-slide grid-bg glow-br" data-slide="6">
+    <div class="slide-content">
+        <p class="label reveal">The vision</p>
+        <h2 class="reveal">Pluggable. Self-improving. Always on.</h2>
+        <p class="subtitle reveal" style="text-align: center;">The ingestion layer is pluggable — same pipeline, any source.</p>
+        <div class="connector-row reveal">
+            <div class="connector-pill"><span class="pill-icon">📁</span> SharePoint</div>
+            <div class="connector-pill"><span class="pill-icon">💬</span> Slack</div>
+            <div class="connector-pill"><span class="pill-icon">📧</span> Outlook</div>
+            <div class="connector-pill"><span class="pill-icon">🗄</span> Databases</div>
+            <div class="connector-pill"><span class="pill-icon">📄</span> PDF / DOCX / CSV</div>
+        </div>
+        <p class="close-tagline reveal">Every correction improves the system.<br>The taxonomy evolves with your team.</p>
+        <div class="cta-row reveal">
+            <span class="cta-badge">Spindle</span>
+            <span class="cta-sub">Document intelligence that actually works.</span>
+        </div>
+    </div>
+</section>
+
+<script>
+    class SlidePresentation {
+        constructor() {
+            this.slides = document.querySelectorAll('.slide');
+            this.progress = document.getElementById('progress');
+            this.navContainer = document.getElementById('navDots');
+            this.current = 0;
+            this.total = this.slides.length;
+            this.isScrolling = false;
+
+            this.buildNav();
+            this.setupObserver();
+            this.setupKeyboard();
+            this.setupWheel();
+            this.setupTouch();
+            this.updateProgress();
+        }
+
+        buildNav() {
+            this.slides.forEach((_, i) => {
+                const dot = document.createElement('button');
+                dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
+                dot.addEventListener('click', () => this.goTo(i));
+                this.navContainer.appendChild(dot);
+            });
+            this.dots = this.navContainer.querySelectorAll('.nav-dot');
+        }
+
+        setupObserver() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        const idx = parseInt(entry.target.dataset.slide);
+                        if (!isNaN(idx)) {
+                            this.current = idx;
+                            this.updateProgress();
+                            this.updateDots();
+                        }
+                    }
+                });
+            }, { threshold: 0.5 });
+
+            this.slides.forEach(slide => observer.observe(slide));
+        }
+
+        setupKeyboard() {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') {
+                    e.preventDefault();
+                    this.next();
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    this.prev();
+                }
+            });
+        }
+
+        setupWheel() {
+            let lastWheel = 0;
+            document.addEventListener('wheel', (e) => {
+                const now = Date.now();
+                if (now - lastWheel < 800) return;
+                lastWheel = now;
+                if (e.deltaY > 30) this.next();
+                else if (e.deltaY < -30) this.prev();
+            }, { passive: true });
+        }
+
+        setupTouch() {
+            let startY = 0;
+            document.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
+            document.addEventListener('touchend', (e) => {
+                const diff = startY - e.changedTouches[0].clientY;
+                if (Math.abs(diff) > 50) {
+                    if (diff > 0) this.next(); else this.prev();
+                }
+            }, { passive: true });
+        }
+
+        goTo(i) {
+            if (i < 0 || i >= this.total) return;
+            this.slides[i].scrollIntoView({ behavior: 'smooth' });
+        }
+
+        next() { this.goTo(this.current + 1); }
+        prev() { this.goTo(this.current - 1); }
+
+        updateProgress() {
+            const pct = ((this.current + 1) / this.total) * 100;
+            this.progress.style.width = pct + '%';
+        }
+
+        updateDots() {
+            this.dots.forEach((d, i) => d.classList.toggle('active', i === this.current));
+        }
+    }
+
+    new SlidePresentation();
+</script>
+</body>
+</html>

@@ -7,6 +7,8 @@ import type {
   ContradictionType,
   ChatResponseType,
   PipelineStatus,
+  InsightsType,
+  EntityTimelineType,
 } from "./types";
 
 const API_BASE = "/api";
@@ -33,7 +35,8 @@ async function request<T>(
 
 export async function uploadDocuments(
   files: File[],
-  companyContext?: string
+  companyContext?: string,
+  splitRows?: boolean
 ): Promise<{ document_ids: string[]; message: string }> {
   const formData = new FormData();
   for (const file of files) {
@@ -41,6 +44,9 @@ export async function uploadDocuments(
   }
   if (companyContext) {
     formData.append("company_context", companyContext);
+  }
+  if (splitRows) {
+    formData.append("split_rows", "true");
   }
 
   const response = await fetch(`${API_BASE}/upload`, {
@@ -161,4 +167,14 @@ export async function sendChatMessage(
     method: "POST",
     body: JSON.stringify({ message, session_id: sessionId }),
   });
+}
+
+export async function getInsights(): Promise<InsightsType> {
+  return request("/insights");
+}
+
+export async function getEntityTimeline(
+  entityId: string
+): Promise<EntityTimelineType> {
+  return request(`/entities/${entityId}/timeline`);
 }

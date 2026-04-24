@@ -22,3 +22,4 @@ docs/
 .claude
 
 .env
+.DS_Store

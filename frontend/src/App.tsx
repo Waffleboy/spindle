@@ -23,15 +23,38 @@ import {
 } from "@/lib/api"
 import { DocumentPanel } from "@/components/document-panel"
 import { TaxonomyPanel } from "@/components/taxonomy-panel"
+import { TaxonomySchemaPanel } from "@/components/taxonomy-schema-panel"
 import { TemplatesPanel } from "@/components/templates-panel"
+import { InsightsDashboard } from "@/components/insights-dashboard"
+import { ChangeFeed } from "@/components/change-feed"
 import { ChatPanel } from "@/components/chat-panel"
 import { TopBar } from "@/components/top-bar"
+import { LandingPage } from "@/components/landing-page"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import {
   NotificationProvider,
   useNotifications,
 } from "@/lib/notifications"
 import { NotificationDisplay } from "@/components/notifications"
+import { ThemeProvider, useTheme } from "@/lib/theme"
+import { Sun, Moon, MessageSquare, Layers } from "lucide-react"
+
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme()
+  return (
+    <button
+      onClick={toggleTheme}
+      className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-medium text-secondary-foreground transition-colors hover:bg-accent"
+    >
+      {theme === "dark" ? (
+        <Moon className="h-3.5 w-3.5" />
+      ) : (
+        <Sun className="h-3.5 w-3.5" />
+      )}
+      {theme === "dark" ? "Dark" : "Light"}
+    </button>
+  )
+}
 
 function AppContent() {
   const [documents, setDocuments] = useState<DocumentType[]>([])
@@ -42,10 +65,13 @@ function AppContent() {
   const [templates, setTemplates] = useState<TaxonomyTemplateType[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null)
-  const [centerTab, setCenterTab] = useState<"taxonomy" | "templates">("taxonomy")
+  const [centerTab, setCenterTab] = useState<"insights" | "taxonomy" | "templates">("insights")
+  const [sidebarTab, setSidebarTab] = useState<"chat" | "schema">("chat")
+  const [changeFeedEntityId, setChangeFeedEntityId] = useState<string | null>(null)
   const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus | null>(
     null
   )
+  const [dataVersion, setDataVersion] = useState(0)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastProcessedRef = useRef<{ documentIds: string[]; companyContext?: string } | null>(null)
   const { addNotification } = useNotifications()
@@ -98,7 +124,6 @@ function AppContent() {
     }
   }, [addNotification])
 
-  // Poll pipeline status when processing
   useEffect(() => {
     if (isProcessing) {
       pollingRef.current = setInterval(async () => {
@@ -132,8 +157,10 @@ function AppContent() {
                 title: "Processing complete",
                 message: "All documents have been processed successfully",
               })
+              setCenterTab("insights")
             }
             await fetchAllData()
+            setDataVersion((v) => v + 1)
           }
         } catch (err) {
           console.error("Status poll failed:", err)
@@ -149,7 +176,6 @@ function AppContent() {
     }
   }, [isProcessing, fetchAllData, addNotification, retryProcessing])
 
-  // Initial data load
   useEffect(() => {
     fetchAllData()
   }, [fetchAllData])
@@ -158,6 +184,7 @@ function AppContent() {
     try {
       await clearAllDocuments()
       await fetchAllData()
+      setDataVersion((v) => v + 1)
       setSelectedDocId(null)
       addNotification({
         type: "info",
@@ -178,6 +205,7 @@ function AppContent() {
       await deleteDocument(documentId)
       if (selectedDocId === documentId) setSelectedDocId(null)
       await fetchAllData()
+      setDataVersion((v) => v + 1)
     } catch (err) {
       addNotification({
         type: "error",
@@ -189,15 +217,14 @@ function AppContent() {
 
   const handleUploadAndProcess = async (
     files: File[],
-    companyContext?: string
+    companyContext?: string,
+    splitRows?: boolean
   ) => {
     try {
-      const uploadResult = await uploadDocuments(files, companyContext)
-      // Immediately refresh documents list
+      const uploadResult = await uploadDocuments(files, companyContext, splitRows)
       const docs = await getDocuments()
       setDocuments(docs)
 
-      // Start processing
       lastProcessedRef.current = { documentIds: uploadResult.document_ids, companyContext }
       await processDocuments(uploadResult.document_ids, companyContext)
       setIsProcessing(true)
@@ -228,10 +255,9 @@ function AppContent() {
   }
 
   return (
-    <TooltipProvider>
-      <div className="flex h-screen flex-col overflow-hidden bg-zinc-950">
-        {/* Top bar with title and pipeline progress */}
-        <header className="flex items-center justify-between border-b border-zinc-800 px-6 py-3">
+    <TooltipProvider delayDuration={200}>
+      <div className="flex h-screen flex-col overflow-hidden bg-background">
+        <header className="flex items-center justify-between border-b border-border px-6 py-3 bg-card">
           <div className="flex items-center gap-3">
             <svg width="36" height="36" viewBox="20 30 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M 28 38 C 40 55, 60 70, 92 95" stroke="#c49a6c" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.6"/>
@@ -248,30 +274,28 @@ function AppContent() {
               <circle cx="52" cy="178" r="4.5" fill="#6aaa9c" opacity="0.6"/>
             </svg>
             <div>
-              <h1 className="text-lg text-zinc-100" style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: '0.03em' }}>
+              <h1 className="text-lg text-foreground" style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: '0.03em' }}>
                 Spindle
               </h1>
-              <p className="text-[10px] text-zinc-500 tracking-widest uppercase" style={{ fontWeight: 300 }}>
-                Structure from chaos
+              <p className="text-[10px] text-muted-foreground tracking-widest uppercase" style={{ fontWeight: 300 }}>
+                Intelligence from your reports
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 text-xs text-zinc-500">
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
             {documents.length > 0 && (
               <span>
                 {documents.filter((d) => d.processed_at).length}/
                 {documents.length} processed
               </span>
             )}
+            <ThemeToggle />
           </div>
         </header>
 
-        {/* Pipeline progress bar */}
         <TopBar pipelineStatus={pipelineStatus} isProcessing={isProcessing} />
 
-        {/* Main content: three-panel layout */}
         <div className="flex flex-1 overflow-hidden">
-          {/* Left panel: Documents */}
           <DocumentPanel
             documents={documents}
             selectedDocId={selectedDocId}
@@ -282,16 +306,24 @@ function AppContent() {
             isProcessing={isProcessing}
           />
 
-          {/* Main panel: Taxonomy Dashboard / Templates */}
           <div className="flex flex-1 flex-col overflow-hidden">
-            {/* Tab switcher */}
-            <div className="flex border-b border-zinc-800 bg-zinc-900/30">
+            <div className="flex border-b border-border bg-card/50">
+              <button
+                onClick={() => { setCenterTab("insights"); setChangeFeedEntityId(null) }}
+                className={`px-4 py-2 text-xs font-medium transition-colors ${
+                  centerTab === "insights"
+                    ? "text-foreground border-b-2 border-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Insights
+              </button>
               <button
                 onClick={() => setCenterTab("taxonomy")}
                 className={`px-4 py-2 text-xs font-medium transition-colors ${
                   centerTab === "taxonomy"
-                    ? "text-zinc-200 border-b-2 border-indigo-500"
-                    : "text-zinc-500 hover:text-zinc-300"
+                    ? "text-foreground border-b-2 border-primary"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Taxonomy
@@ -300,20 +332,33 @@ function AppContent() {
                 onClick={() => setCenterTab("templates")}
                 className={`px-4 py-2 text-xs font-medium transition-colors ${
                   centerTab === "templates"
-                    ? "text-zinc-200 border-b-2 border-indigo-500"
-                    : "text-zinc-500 hover:text-zinc-300"
+                    ? "text-foreground border-b-2 border-primary"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Templates
                 {templates.length > 0 && (
-                  <span className="ml-1.5 rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">
+                  <span className="ml-1.5 rounded-full bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
                     {templates.length}
                   </span>
                 )}
               </button>
             </div>
 
-            {centerTab === "taxonomy" ? (
+            {centerTab === "insights" ? (
+              changeFeedEntityId ? (
+                <ChangeFeed
+                  entities={entities}
+                  initialEntityId={changeFeedEntityId}
+                  onClose={() => setChangeFeedEntityId(null)}
+                />
+              ) : (
+                <InsightsDashboard
+                  onSelectEntity={(entityId) => setChangeFeedEntityId(entityId)}
+                  refreshKey={dataVersion}
+                />
+              )
+            ) : centerTab === "taxonomy" ? (
               <TaxonomyPanel
                 documents={documents}
                 taxonomy={taxonomy}
@@ -321,6 +366,7 @@ function AppContent() {
                 contradictions={contradictions}
                 entities={entities}
                 selectedDocId={selectedDocId}
+                onSelectDoc={setSelectedDocId}
                 onDataRefresh={fetchAllData}
               />
             ) : (
@@ -331,20 +377,81 @@ function AppContent() {
             )}
           </div>
 
-          {/* Right panel: Chat */}
-          <ChatPanel hasTaxonomy={!!taxonomy} />
+          <div className="flex h-full w-80 flex-col border-l border-border bg-card">
+            {centerTab === "taxonomy" ? (
+              <>
+                <div className="flex border-b border-border">
+                  <button
+                    onClick={() => setSidebarTab("schema")}
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors ${
+                      sidebarTab === "schema"
+                        ? "text-foreground border-b-2 border-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    Schema
+                  </button>
+                  <button
+                    onClick={() => setSidebarTab("chat")}
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors ${
+                      sidebarTab === "chat"
+                        ? "text-foreground border-b-2 border-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    Chat
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  {sidebarTab === "schema" ? (
+                    <TaxonomySchemaPanel taxonomy={taxonomy} extractions={extractions} />
+                  ) : (
+                    <ChatPanel hasTaxonomy={!!taxonomy} embedded />
+                  )}
+                </div>
+              </>
+            ) : (
+              <ChatPanel hasTaxonomy={!!taxonomy} />
+            )}
+          </div>
         </div>
       </div>
     </TooltipProvider>
   )
 }
 
+function useHashRoute() {
+  const [hash, setHash] = useState(window.location.hash)
+  useEffect(() => {
+    const onHashChange = () => setHash(window.location.hash)
+    window.addEventListener("hashchange", onHashChange)
+    return () => window.removeEventListener("hashchange", onHashChange)
+  }, [])
+  return hash
+}
+
 function App() {
+  const hash = useHashRoute()
+  const showApp = hash === "#app"
+
+  const enterApp = useCallback(() => {
+    window.location.hash = "#app"
+    window.scrollTo(0, 0)
+  }, [])
+
+  if (!showApp) {
+    return <LandingPage onEnterApp={enterApp} />
+  }
+
   return (
-    <NotificationProvider>
-      <NotificationDisplay />
-      <AppContent />
-    </NotificationProvider>
+    <ThemeProvider>
+      <NotificationProvider>
+        <NotificationDisplay />
+        <AppContent />
+      </NotificationProvider>
+    </ThemeProvider>
   )
 }
 

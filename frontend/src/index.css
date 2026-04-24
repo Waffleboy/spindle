@@ -3,7 +3,37 @@
 @tailwind utilities;
 
 @layer base {
+  /* -- Light theme (default) -- matches mockup-saas-theme.html */
   :root {
+    --background: 216 33% 97%;
+    --foreground: 221 39% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 221 39% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 221 39% 11%;
+    --primary: 221 81% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 218 29% 95%;
+    --secondary-foreground: 215 14% 34%;
+    --muted: 218 29% 95%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 218 36% 96%;
+    --accent-foreground: 215 14% 34%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 221 81% 65%;
+    --radius: 0.5rem;
+
+    --success: 161 94% 30%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 44%;
+    --warning-foreground: 0 0% 100%;
+  }
+
+  /* -- Dark theme -- */
+  .dark {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --card: 240 10% 5.9%;
@@ -24,20 +54,25 @@
     --input: 240 3.7% 15.9%;
     --ring: 217.2 91.2% 59.8%;
     --radius: 0.5rem;
+
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 98%;
   }
 
   * {
-    @apply border-zinc-800;
+    @apply border-border;
   }
 
   body {
-    @apply bg-zinc-950 text-zinc-100;
+    @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
     margin: 0;
   }
 }
 
-/* Custom scrollbar for dark theme */
+/* Custom scrollbar -- adapts to theme */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -48,12 +83,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(113, 113, 122, 0.4);
+  background: hsl(var(--muted-foreground) / 0.3);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(113, 113, 122, 0.6);
+  background: hsl(var(--muted-foreground) / 0.5);
 }
 
 /* Typing indicator animation */

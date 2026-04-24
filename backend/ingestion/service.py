@@ -20,11 +20,6 @@ _EXTENSION_MAP: dict[str, str] = {
 
 
 def _file_type_from_filename(filename: str) -> str:
-    """Determine the canonical file type from a filename's extension.
-
-    Raises:
-        ValueError: If the extension is not supported.
-    """
     ext = Path(filename).suffix.lower()
     file_type = _EXTENSION_MAP.get(ext)
     if file_type is None:
@@ -35,39 +30,27 @@ def _file_type_from_filename(filename: str) -> str:
     return file_type
 
 
-def store_and_ingest(
-    filename: str, file_content: bytes
-) -> tuple[Document, IngestedDocument]:
-    """Store an uploaded file to disk, create a DB record, and ingest it.
-
-    Args:
-        filename: Original filename (e.g. "report.pdf").
-        file_content: Raw bytes of the uploaded file.
-
-    Returns:
-        A tuple of (Document DB record, IngestedDocument).
-
-    Raises:
-        ValueError: If the file type is unsupported.
-    """
+def _store_file(filename: str, file_content: bytes) -> tuple[Path, str, str]:
+    """Write file to disk and return (dest_path, storage_path, file_type)."""
     file_type = _file_type_from_filename(filename)
-
-    # Generate a unique storage filename
     unique_prefix = uuid.uuid4().hex[:12]
     safe_name = f"{unique_prefix}_{filename}"
     originals_dir = get_settings().originals_dir
     dest_path = originals_dir / safe_name
-
-    # Write file to disk
     dest_path.write_bytes(file_content)
-
     storage_path = str(dest_path.relative_to(originals_dir.parent.parent))
+    return dest_path, storage_path, file_type
 
-    # Ingest the document
+
+def store_and_ingest(
+    filename: str, file_content: bytes
+) -> tuple[Document, IngestedDocument]:
+    """Store an uploaded file to disk, create a DB record, and ingest it."""
+    dest_path, storage_path, file_type = _store_file(filename, file_content)
+
     ingester = get_ingester(file_type)
     ingested = ingester.ingest(dest_path, storage_path)
 
-    # Create DB record
     db = SessionLocal()
     try:
         doc = Document(
@@ -79,6 +62,7 @@ def store_and_ingest(
         db.add(doc)
         db.commit()
         db.refresh(doc)
+        db.expunge(doc)
     except Exception:
         db.rollback()
         raise
@@ -86,3 +70,38 @@ def store_and_ingest(
         db.close()
 
     return doc, ingested
+
+
+def store_and_ingest_csv_rows(
+    filename: str, file_content: bytes
+) -> list[tuple[Document, IngestedDocument]]:
+    """Store a CSV file and create one Document per data row."""
+    dest_path, storage_path, _file_type = _store_file(filename, file_content)
+
+    from backend.ingestion.csv_ingester import CsvIngester
+    ingester = CsvIngester()
+    ingested_docs = ingester.ingest_rows(dest_path, storage_path, original_filename=filename)
+
+    results: list[tuple[Document, IngestedDocument]] = []
+    db = SessionLocal()
+    try:
+        for ingested in ingested_docs:
+            doc = Document(
+                original_filename=ingested.original_filename,
+                storage_path=storage_path,
+                file_type="csv",
+                page_count=1,
+                source_text=ingested.text,
+            )
+            db.add(doc)
+            db.commit()
+            db.refresh(doc)
+            db.expunge(doc)
+            results.append((doc, ingested))
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+    return results

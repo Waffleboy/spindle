@@ -8,6 +8,8 @@ from typing import Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
+from collections import defaultdict
+
 from backend.api.schemas import (
     ChatRequest,
     ChatResponse,
@@ -15,8 +17,13 @@ from backend.api.schemas import (
     DocumentResponse,
     EntityResponse,
     EntityResolutionResponse,
+    EntityTimelineResponse,
     EntityUpdateRequest,
     ExtractionResponse,
+    InsightContradiction,
+    InsightEntityReview,
+    InsightStaleness,
+    InsightsResponse,
     ProcessRequest,
     ProcessResponse,
     ResolutionUpdateRequest,
@@ -25,12 +32,15 @@ from backend.api.schemas import (
     TaxonomyTemplateCreate,
     TaxonomyTemplateResponse,
     TaxonomyTemplateUpdate,
+    TimelineDiff,
+    TimelineDimensionValue,
+    TimelineNode,
     UploadedFileInfo,
     UploadResponse,
 )
 from backend.chat.engine import chat
 from backend.database import get_db
-from backend.ingestion.service import store_and_ingest
+from backend.ingestion.service import store_and_ingest, store_and_ingest_csv_rows
 from backend.models import (
     Contradiction,
     Document,
@@ -56,15 +66,20 @@ _SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv"}
 async def upload_documents(
     files: list[UploadFile] = File(...),
     company_context: Optional[str] = Form(None),
+    split_rows: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
-    """Upload one or more documents (.pdf, .docx, .doc, .xlsx, .xls, .csv)."""
+    """Upload one or more documents (.pdf, .docx, .doc, .xlsx, .xls, .csv).
+
+    When split_rows is "true" and a CSV is uploaded, each row becomes a
+    separate document.
+    """
     uploaded: list[UploadedFileInfo] = []
     errors: list[str] = []
+    should_split = split_rows and split_rows.lower() == "true"
 
     for file in files:
         filename = file.filename or "unknown"
-        # Validate extension
         ext = ""
         dot_idx = filename.rfind(".")
         if dot_idx >= 0:
@@ -79,8 +94,13 @@ async def upload_documents(
 
         content = await file.read()
         try:
-            doc, _ingested = store_and_ingest(filename, content)
-            uploaded.append(UploadedFileInfo(id=doc.id, filename=doc.original_filename))
+            if should_split and ext == ".csv":
+                pairs = store_and_ingest_csv_rows(filename, content)
+                for doc, _ingested in pairs:
+                    uploaded.append(UploadedFileInfo(id=doc.id, filename=doc.original_filename))
+            else:
+                doc, _ingested = store_and_ingest(filename, content)
+                uploaded.append(UploadedFileInfo(id=doc.id, filename=doc.original_filename))
         except Exception as exc:
             errors.append(f"Failed to ingest '{filename}': {exc}")
 
@@ -281,9 +301,11 @@ async def get_extractions(
         query = query.filter(Extraction.dimension_name == dimension_name)
 
     extractions = query.all()
+    doc_ids = {ext.document_id for ext in extractions}
+    docs_map = {d.id: d for d in db.query(Document).filter(Document.id.in_(doc_ids)).all()} if doc_ids else {}
     result = []
     for ext in extractions:
-        doc = db.query(Document).filter(Document.id == ext.document_id).first()
+        doc = docs_map.get(ext.document_id)
         resp = ExtractionResponse.model_validate(ext)
         resp.document_filename = doc.original_filename if doc else None
         result.append(resp)
@@ -366,6 +388,142 @@ async def update_entity(
     resp = EntityResponse.model_validate(entity)
     resp.needs_review_count = needs_review_count
     return resp
+
+
+# ---------------------------------------------------------------------------
+# GET /api/entities/{id}/timeline
+# ---------------------------------------------------------------------------
+
+
+@router.get("/entities/{entity_id}/timeline", response_model=EntityTimelineResponse)
+async def get_entity_timeline(
+    entity_id: str,
+    db: Session = Depends(get_db),
+):
+    """Return chronologically ordered extractions for an entity across all documents with computed diffs."""
+    # 1. Find entity
+    entity = db.query(Entity).filter(Entity.id == entity_id).first()
+    if entity is None:
+        raise HTTPException(status_code=404, detail="Entity not found")
+
+    # 2. Find all EntityResolution records for this entity -> get document IDs
+    resolutions = (
+        db.query(EntityResolution)
+        .filter(EntityResolution.entity_id == entity_id)
+        .all()
+    )
+    doc_ids = list({r.document_id for r in resolutions})
+
+    if not doc_ids:
+        return EntityTimelineResponse(
+            entity_id=entity.id,
+            entity_name=entity.canonical_name,
+            entity_type=entity.entity_type,
+            timeline=[],
+        )
+
+    # 3. Fetch documents and sort chronologically (oldest first)
+    documents = (
+        db.query(Document)
+        .filter(Document.id.in_(doc_ids))
+        .all()
+    )
+    documents.sort(key=lambda d: d.report_date or d.uploaded_at)
+
+    # 4. Pre-fetch all extractions for these documents in one query
+    all_extractions = (
+        db.query(Extraction)
+        .filter(Extraction.document_id.in_(doc_ids))
+        .all()
+    )
+    # Group extractions by document_id
+    extractions_by_doc: dict[str, list[Extraction]] = {}
+    for ext in all_extractions:
+        extractions_by_doc.setdefault(ext.document_id, []).append(ext)
+
+    # 5. Pre-fetch unresolved contradictions involving these documents and this entity
+    unresolved_contradictions = (
+        db.query(Contradiction)
+        .filter(
+            Contradiction.resolution_status == "unresolved",
+            Contradiction.entity_id == entity_id,
+        )
+        .all()
+    )
+    # Index contradictions by (doc_a_id, doc_b_id, dimension_name) for fast lookup
+    contradiction_set: set[tuple[str, str, str]] = set()
+    for c in unresolved_contradictions:
+        contradiction_set.add((c.doc_a_id, c.doc_b_id, c.dimension_name))
+        contradiction_set.add((c.doc_b_id, c.doc_a_id, c.dimension_name))
+
+    # 6. Build timeline nodes with diffs
+    timeline: list[TimelineNode] = []
+    prev_dims: dict[str, str] = {}  # dimension_name -> value from previous doc
+
+    for doc in documents:
+        doc_extractions = extractions_by_doc.get(doc.id, [])
+        is_approximate = doc.report_date is None
+        doc_date = doc.report_date or doc.uploaded_at
+
+        dimensions = [
+            TimelineDimensionValue(
+                dimension_name=ext.dimension_name,
+                value=ext.resolved_value or ext.raw_value,
+                confidence=ext.confidence,
+                source_pages=ext.source_pages,
+            )
+            for ext in doc_extractions
+        ]
+
+        # Compute diffs from previous document
+        current_dims: dict[str, str] = {
+            ext.dimension_name: (ext.resolved_value or ext.raw_value)
+            for ext in doc_extractions
+        }
+
+        diffs: list[TimelineDiff] = []
+        prev_doc_id = timeline[-1].document_id if timeline else None
+
+        for dim_name, new_value in current_dims.items():
+            if dim_name not in prev_dims:
+                # New dimension - only flag if there was a previous document
+                if prev_doc_id is not None:
+                    diffs.append(TimelineDiff(
+                        dimension_name=dim_name,
+                        old_value="",
+                        new_value=new_value,
+                        change_type="new",
+                    ))
+            elif prev_dims[dim_name] != new_value:
+                # Value changed - check for contradiction
+                has_contradiction = (
+                    prev_doc_id is not None
+                    and (prev_doc_id, doc.id, dim_name) in contradiction_set
+                )
+                diffs.append(TimelineDiff(
+                    dimension_name=dim_name,
+                    old_value=prev_dims[dim_name],
+                    new_value=new_value,
+                    change_type="contradiction" if has_contradiction else "updated",
+                ))
+
+        timeline.append(TimelineNode(
+            document_id=doc.id,
+            document_filename=doc.original_filename,
+            document_date=doc_date,
+            is_approximate_date=is_approximate,
+            dimensions=dimensions,
+            diffs_from_previous=diffs,
+        ))
+
+        prev_dims = current_dims
+
+    return EntityTimelineResponse(
+        entity_id=entity.id,
+        entity_name=entity.canonical_name,
+        entity_type=entity.entity_type,
+        timeline=timeline,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -471,6 +629,258 @@ async def delete_taxonomy_template(
 
     db.delete(template)
     db.commit()
+
+
+# ---------------------------------------------------------------------------
+# GET /api/insights
+# ---------------------------------------------------------------------------
+
+
+def _doc_effective_date(doc: Document) -> datetime | None:
+    """Return report_date if set, otherwise uploaded_at."""
+    return doc.report_date or doc.uploaded_at
+
+
+@router.get("/insights", response_model=InsightsResponse)
+async def get_insights(db: Session = Depends(get_db)):
+    """Aggregate contradictions, entity reviews, and staleness into a single dashboard response."""
+
+    # ------------------------------------------------------------------
+    # 1. Contradictions
+    # ------------------------------------------------------------------
+    contradictions_db = db.query(Contradiction).all()
+
+    # Pre-fetch all referenced documents in one query to avoid N+1
+    contra_doc_ids: set[str] = set()
+    contra_entity_ids: set[str] = set()
+    for c in contradictions_db:
+        contra_doc_ids.update((c.doc_a_id, c.doc_b_id))
+        if c.entity_id:
+            contra_entity_ids.add(c.entity_id)
+
+    docs_by_id: dict[str, Document] = {}
+    if contra_doc_ids:
+        for doc in db.query(Document).filter(Document.id.in_(contra_doc_ids)).all():
+            docs_by_id[doc.id] = doc
+
+    entities_by_id: dict[str, Entity] = {}
+    if contra_entity_ids:
+        for ent in db.query(Entity).filter(Entity.id.in_(contra_entity_ids)).all():
+            entities_by_id[ent.id] = ent
+
+    insight_contradictions: list[InsightContradiction] = []
+    for c in contradictions_db:
+        doc_a = docs_by_id.get(c.doc_a_id)
+        doc_b = docs_by_id.get(c.doc_b_id)
+        date_a = _doc_effective_date(doc_a) if doc_a else (c.doc_a_date or None)
+        date_b = _doc_effective_date(doc_b) if doc_b else (c.doc_b_date or None)
+
+        newer_doc: str | None = None
+        if date_a is not None and date_b is not None:
+            newer_doc = "a" if date_a > date_b else "b" if date_b > date_a else None
+
+        entity = entities_by_id.get(c.entity_id) if c.entity_id else None
+
+        insight_contradictions.append(InsightContradiction(
+            id=c.id,
+            dimension_name=c.dimension_name,
+            entity_name=entity.canonical_name if entity else None,
+            doc_a_id=c.doc_a_id,
+            doc_a_filename=doc_a.original_filename if doc_a else "Unknown",
+            doc_a_value=c.value_a,
+            doc_a_date=date_a,
+            doc_b_id=c.doc_b_id,
+            doc_b_filename=doc_b.original_filename if doc_b else "Unknown",
+            doc_b_value=c.value_b,
+            doc_b_date=date_b,
+            newer_doc=newer_doc,
+            reason=c.reason,
+            resolution_status=c.resolution_status,
+        ))
+
+    # ------------------------------------------------------------------
+    # 2. Entities needing review
+    # ------------------------------------------------------------------
+    from sqlalchemy import func as sa_func
+    review_counts = dict(
+        db.query(EntityResolution.entity_id, sa_func.count())
+        .filter(EntityResolution.needs_review.is_(True))
+        .group_by(EntityResolution.entity_id)
+        .all()
+    )
+    insight_entity_reviews: list[InsightEntityReview] = []
+    if review_counts:
+        review_entity_objs = db.query(Entity).filter(Entity.id.in_(review_counts.keys())).all()
+        for ent in review_entity_objs:
+            insight_entity_reviews.append(InsightEntityReview(
+                entity_id=ent.id,
+                canonical_name=ent.canonical_name,
+                entity_type=ent.entity_type,
+                review_count=review_counts[ent.id],
+                aliases=ent.aliases or [],
+            ))
+
+    # ------------------------------------------------------------------
+    # 3. Staleness detection
+    # ------------------------------------------------------------------
+    # Build a set of (entity_id or None, dimension_name) pairs that have contradictions
+    contradiction_keys: set[tuple[str | None, str]] = set()
+    for c in contradictions_db:
+        contradiction_keys.add((c.entity_id, c.dimension_name))
+
+    # Fetch all extractions with their documents
+    all_extractions = db.query(Extraction).all()
+
+    # Pre-fetch all documents needed for extractions
+    extraction_doc_ids = {ext.document_id for ext in all_extractions}
+    if extraction_doc_ids - set(docs_by_id.keys()):
+        for doc in db.query(Document).filter(
+            Document.id.in_(extraction_doc_ids - set(docs_by_id.keys()))
+        ).all():
+            docs_by_id[doc.id] = doc
+
+    # Group extractions by (entity_id, dimension_name).
+    # For entity-type extractions, resolve entity_id via EntityResolution.
+    # For non-entity extractions, group by (None, dimension_name).
+
+    # Pre-fetch entity resolutions for entity lookup
+    all_resolutions = db.query(EntityResolution).all()
+    # Map (document_id, original_value) -> entity_id
+    resolution_map: dict[tuple[str, str], str] = {}
+    for r in all_resolutions:
+        resolution_map[(r.document_id, r.original_value)] = r.entity_id
+
+    # Fetch all entities for name lookups
+    all_entities = db.query(Entity).all()
+    all_entities_by_id: dict[str, Entity] = {e.id: e for e in all_entities}
+
+    # Group extractions: key = (entity_id or None, dimension_name) -> list of (extraction, document)
+    ExtractionGroup = list[tuple[Extraction, Document]]
+    grouped: dict[tuple[str | None, str], ExtractionGroup] = defaultdict(list)
+
+    for ext in all_extractions:
+        doc = docs_by_id.get(ext.document_id)
+        if doc is None:
+            continue
+
+        # Try to resolve an entity_id for this extraction
+        entity_id = resolution_map.get((ext.document_id, ext.raw_value))
+        grouped[(entity_id, ext.dimension_name)].append((ext, doc))
+
+    # Build doc_id -> set of entity_ids for entity-aware staleness grouping
+    doc_entity_map: dict[str, set[str]] = defaultdict(set)
+    for r in all_resolutions:
+        doc_entity_map[r.document_id].add(r.entity_id)
+    has_any_entities = bool(doc_entity_map)
+
+    # Build dimension type lookup from all taxonomy schemas
+    all_taxonomies = db.query(TaxonomySchema).all()
+    dim_type_map: dict[str, str] = {}
+    for tax in all_taxonomies:
+        for dim in tax.dimensions:
+            dim_type_map[dim["name"]] = dim.get("expected_type", "text")
+
+    # Detect per-document identifier dimensions: text-type dimensions where
+    # every document has a unique value (e.g. REPORT_ID, REPORT_TITLE) are
+    # document-level identifiers, not evolving facts worth tracking.
+    # Numeric, currency, and date types are excluded since those naturally
+    # evolve over time (e.g. employee_count, revenue).
+    _fact_types = {"number", "currency", "date", "date_range"}
+    dim_doc_values: dict[str, dict[str, str]] = defaultdict(dict)
+    for ext in all_extractions:
+        val = ext.resolved_value or ext.raw_value
+        if val:
+            dim_doc_values[ext.dimension_name][ext.document_id] = val
+    identifier_dims: set[str] = set()
+    for dname, doc_vals in dim_doc_values.items():
+        if dim_type_map.get(dname) in _fact_types:
+            continue
+        if len(doc_vals) >= 3 and len(set(doc_vals.values())) == len(doc_vals):
+            identifier_dims.add(dname)
+
+    def _collect_staleness(
+        sub_items: ExtractionGroup,
+        eid: str | None,
+        dim: str,
+        out: list[InsightStaleness],
+        seen: set[tuple[str, str, str]],
+    ) -> None:
+        """Compare consecutive doc pairs and append staleness items."""
+        sub_items.sort(key=lambda pair: _doc_effective_date(pair[1]) or datetime.min)
+        for i in range(len(sub_items) - 1):
+            older_ext, older_doc = sub_items[i]
+            newer_ext, newer_doc = sub_items[i + 1]
+            dedup_key = (older_doc.id, newer_doc.id, dim)
+            if dedup_key in seen:
+                continue
+            older_value = older_ext.resolved_value or older_ext.raw_value
+            newer_value = newer_ext.resolved_value or newer_ext.raw_value
+            if older_value != newer_value:
+                seen.add(dedup_key)
+                entity_name = (
+                    all_entities_by_id[eid].canonical_name
+                    if eid and eid in all_entities_by_id
+                    else None
+                )
+                out.append(InsightStaleness(
+                    dimension_name=dim,
+                    entity_name=entity_name,
+                    newest_value=newer_value,
+                    newest_doc_filename=newer_doc.original_filename,
+                    newest_doc_date=_doc_effective_date(newer_doc),
+                    older_value=older_value,
+                    older_doc_filename=older_doc.original_filename,
+                    older_doc_date=_doc_effective_date(older_doc),
+                ))
+
+    insight_staleness: list[InsightStaleness] = []
+    staleness_seen: set[tuple[str, str, str]] = set()
+
+    for (entity_id, dim_name), items in grouped.items():
+        if len(items) < 2:
+            continue
+        if (entity_id, dim_name) in contradiction_keys:
+            continue
+        # Skip entity-reference dimensions — they are identifiers, not facts
+        if dim_type_map.get(dim_name) in ("entity", "entity_list"):
+            continue
+        # Skip per-document identifier dimensions (every doc has a unique value)
+        if dim_name in identifier_dims:
+            continue
+
+        if entity_id is not None:
+            _collect_staleness(items, entity_id, dim_name, insight_staleness, staleness_seen)
+        elif has_any_entities:
+            # Non-entity dimension: re-group by the entities each document
+            # is associated with so we only compare facts about the same subject.
+            sub_groups: dict[str, ExtractionGroup] = defaultdict(list)
+            for ext, doc in items:
+                for eid in doc_entity_map.get(doc.id, set()):
+                    sub_groups[eid].append((ext, doc))
+
+            for eid, sub_items in sub_groups.items():
+                if (eid, dim_name) in contradiction_keys:
+                    continue
+                seen_docs: set[str] = set()
+                unique: ExtractionGroup = []
+                for ext, doc in sub_items:
+                    if doc.id not in seen_docs:
+                        seen_docs.add(doc.id)
+                        unique.append((ext, doc))
+                if len(unique) >= 2:
+                    _collect_staleness(unique, eid, dim_name, insight_staleness, staleness_seen)
+        else:
+            # No entities in system at all — fall back to ungrouped comparison
+            _collect_staleness(items, None, dim_name, insight_staleness, staleness_seen)
+
+    return InsightsResponse(
+        total_contradictions=len(insight_contradictions),
+        total_entities_needing_review=len(insight_entity_reviews),
+        total_staleness_items=len(insight_staleness),
+        contradictions=insight_contradictions,
+        entities_needing_review=insight_entity_reviews,
+        staleness_items=insight_staleness,
+    )
 
 
 # ---------------------------------------------------------------------------

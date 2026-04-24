@@ -55,11 +55,11 @@ function NotificationCard({ notification }: { notification: NotificationType }) 
     >
       <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", styles.icon)} />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-zinc-100">
+        <p className="text-sm font-medium text-foreground">
           {notification.title}
         </p>
         {notification.message && (
-          <p className="mt-0.5 text-xs text-zinc-400 leading-relaxed">
+          <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
             {notification.message}
           </p>
         )}
@@ -69,7 +69,7 @@ function NotificationCard({ notification }: { notification: NotificationType }) 
               removeNotification(notification.id)
               notification.onAction!()
             }}
-            className="mt-1.5 rounded bg-zinc-700/60 px-2.5 py-1 text-xs font-medium text-zinc-200 transition-colors hover:bg-zinc-600/60"
+            className="mt-1.5 rounded bg-secondary/60 px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-secondary/80"
           >
             {notification.actionLabel}
           </button>
@@ -77,7 +77,7 @@ function NotificationCard({ notification }: { notification: NotificationType }) 
       </div>
       <button
         onClick={() => removeNotification(notification.id)}
-        className="shrink-0 rounded p-0.5 text-zinc-500 transition-colors hover:text-zinc-300 hover:bg-zinc-800/50"
+        className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50"
         aria-label="Dismiss notification"
       >
         <X className="h-3.5 w-3.5" />

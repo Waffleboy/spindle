@@ -20,6 +20,21 @@ def init_db() -> None:
 
     Base.metadata.create_all(bind=engine)
 
+    # Migrate: add report_date column if missing (create_all won't alter existing tables)
+    with engine.connect() as conn:
+        cols = {row[1] for row in conn.execute(text("PRAGMA table_info(documents)")).fetchall()}
+        if "report_date" not in cols:
+            conn.execute(text("ALTER TABLE documents ADD COLUMN report_date DATETIME"))
+            conn.commit()
+        if "source_text" not in cols:
+            conn.execute(text("ALTER TABLE documents ADD COLUMN source_text TEXT"))
+            conn.commit()
+
+        contra_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(contradictions)")).fetchall()}
+        if contra_cols and "reason" not in contra_cols:
+            conn.execute(text("ALTER TABLE contradictions ADD COLUMN reason TEXT"))
+            conn.commit()
+
     # Create FTS5 virtual table for full-text search on document_chunks
     with engine.connect() as conn:
         conn.execute(

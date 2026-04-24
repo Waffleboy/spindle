@@ -39,30 +39,30 @@ export function EntityReviewCard({
   const confidencePercent = confidence ? Math.round(confidence * 100) : null
 
   return (
-    <Card className="border-amber-500/30 bg-zinc-900/80 animate-slide-in">
+    <Card className="border-amber-500/30 bg-card animate-slide-in">
       <CardContent className="p-3 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-amber-400" />
-            <span className="text-sm font-semibold text-amber-300">
+            <span className="text-sm font-semibold text-amber-500 dark:text-amber-300">
               Entity Review
             </span>
           </div>
-          <button onClick={onClose} className="text-zinc-600 hover:text-zinc-400">
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div>
-          <div className="text-xs text-zinc-500 mb-1">Canonical Name</div>
-          <div className="text-sm font-medium text-zinc-200">
+          <div className="text-xs text-muted-foreground mb-1">Canonical Name</div>
+          <div className="text-sm font-medium text-foreground">
             {entity.canonical_name}
           </div>
         </div>
 
         {entity.aliases.length > 0 && (
           <div>
-            <div className="text-xs text-zinc-500 mb-1.5">Aliases</div>
+            <div className="text-xs text-muted-foreground mb-1.5">Aliases</div>
             <div className="flex flex-wrap gap-1">
               {entity.aliases.map((alias) => (
                 <Badge key={alias} variant="secondary" className="text-[10px]">
@@ -76,7 +76,7 @@ export function EntityReviewCard({
         {confidencePercent !== null && (
           <div>
             <div className="flex items-center justify-between text-xs mb-1">
-              <span className="text-zinc-500">Confidence</span>
+              <span className="text-muted-foreground">Confidence</span>
               <span
                 className={
                   confidencePercent >= 80
@@ -89,7 +89,7 @@ export function EntityReviewCard({
                 {confidencePercent}%
               </span>
             </div>
-            <div className="h-1.5 w-full rounded-full bg-zinc-800">
+            <div className="h-1.5 w-full rounded-full bg-muted">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
                   confidencePercent >= 80
@@ -109,7 +109,7 @@ export function EntityReviewCard({
             <Button
               size="sm"
               variant="outline"
-              className="flex-1 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+              className="flex-1 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
               onClick={() => handleAction(true)}
               disabled={isSubmitting}
             >
@@ -119,7 +119,7 @@ export function EntityReviewCard({
             <Button
               size="sm"
               variant="outline"
-              className="flex-1 border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
+              className="flex-1 border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"
               onClick={() => handleAction(false)}
               disabled={isSubmitting}
             >

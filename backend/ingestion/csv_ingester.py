@@ -11,34 +11,22 @@ from backend.ingestion.common import (
 )
 
 
+def _read_csv_content(file_path: Path) -> str:
+    raw_bytes = file_path.read_bytes()
+    try:
+        return raw_bytes.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return raw_bytes.decode("latin-1")
+
+
 class CsvIngester(BaseIngester):
     """Extracts structured text from CSV files."""
 
     def ingest(self, file_path: Path, storage_path: str) -> IngestedDocument:
-        """Ingest a CSV file.
-
-        Reads the CSV and converts to a tab-separated text representation
-        consistent with the Excel ingester output. page_count is always 1.
-
-        Args:
-            file_path: Path to the .csv file.
-            storage_path: Relative storage path for reference.
-
-        Returns:
-            IngestedDocument with structured text and empty pages list.
-        """
-        raw_bytes = file_path.read_bytes()
-
-        # Try UTF-8 first, fall back to latin-1 (which never raises)
-        try:
-            content = raw_bytes.decode("utf-8-sig")
-        except UnicodeDecodeError:
-            content = raw_bytes.decode("latin-1")
-
+        content = _read_csv_content(file_path)
         reader = csv.reader(io.StringIO(content))
         lines: list[str] = []
         for row in reader:
-            # Skip entirely empty rows
             if any(cell.strip() for cell in row):
                 lines.append("\t".join(row))
 
@@ -52,6 +40,43 @@ class CsvIngester(BaseIngester):
             text=text,
             page_count=1,
         )
+
+    def ingest_rows(
+        self, file_path: Path, storage_path: str, original_filename: str | None = None
+    ) -> list[IngestedDocument]:
+        """Split a CSV into one IngestedDocument per data row.
+
+        Each document's text is a key-value representation using the header
+        row as field names, making it easier for the LLM to extract from.
+        """
+        content = _read_csv_content(file_path)
+        reader = csv.reader(io.StringIO(content))
+
+        rows = [r for r in reader if any(cell.strip() for cell in r)]
+        if len(rows) < 2:
+            return [self.ingest(file_path, storage_path)]
+
+        base_name = original_filename or file_path.name
+        headers = rows[0]
+        documents: list[IngestedDocument] = []
+
+        for row_idx, row in enumerate(rows[1:], start=1):
+            kv_lines: list[str] = []
+            for col_idx, cell in enumerate(row):
+                header = headers[col_idx] if col_idx < len(headers) else f"Column {col_idx + 1}"
+                kv_lines.append(f"{header}: {cell}")
+            text = "\n".join(kv_lines)
+
+            documents.append(IngestedDocument(
+                original_filename=f"{base_name} [Row {row_idx}]",
+                storage_path=storage_path,
+                file_type="csv",
+                pages=[],
+                text=text,
+                page_count=1,
+            ))
+
+        return documents
 
 
 register_ingester("csv", CsvIngester)

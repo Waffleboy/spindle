@@ -22,10 +22,10 @@ export function TopBar({ pipelineStatus, isProcessing }: TopBarProps) {
   const currentStep = pipelineStatus?.current_step ?? null
 
   return (
-    <div className="border-b border-zinc-800 bg-zinc-900/50 px-6 py-3">
+    <div className="border-b border-border bg-card/50 px-6 py-3">
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 text-sm font-medium text-zinc-300">
-          <Activity className="h-4 w-4 text-indigo-400 animate-pulse" />
+        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <Activity className="h-4 w-4 text-primary animate-pulse" />
           <span>Pipeline Progress</span>
         </div>
         <div className="flex flex-1 items-center gap-1">
@@ -41,20 +41,20 @@ export function TopBar({ pipelineStatus, isProcessing }: TopBarProps) {
                       isCompleted
                         ? "text-emerald-400"
                         : isCurrent
-                        ? "text-indigo-400"
-                        : "text-zinc-600"
+                        ? "text-primary"
+                        : "text-muted-foreground"
                     )}
                   >
                     {step.label}
                   </span>
-                  <div className="h-1.5 w-full rounded-full bg-zinc-800">
+                  <div className="h-1.5 w-full rounded-full bg-muted">
                     <div
                       className={cn(
                         "h-full rounded-full transition-all duration-700 ease-out",
                         isCompleted
                           ? "bg-emerald-500 w-full"
                           : isCurrent
-                          ? "bg-indigo-500 w-1/2 animate-pulse"
+                          ? "bg-primary w-1/2 animate-pulse"
                           : "w-0"
                       )}
                     />
@@ -64,7 +64,7 @@ export function TopBar({ pipelineStatus, isProcessing }: TopBarProps) {
                   <div
                     className={cn(
                       "mx-1 mt-4 h-px w-4",
-                      isCompleted ? "bg-emerald-500/50" : "bg-zinc-800"
+                      isCompleted ? "bg-emerald-500/50" : "bg-muted"
                     )}
                   />
                 )}
@@ -73,7 +73,7 @@ export function TopBar({ pipelineStatus, isProcessing }: TopBarProps) {
           })}
         </div>
         {pipelineStatus && (
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-muted-foreground">
             {pipelineStatus.processed_documents}/{pipelineStatus.total_documents} docs
           </span>
         )}

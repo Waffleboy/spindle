@@ -4,6 +4,7 @@ export interface DocumentType {
   file_type: string;
   detected_doc_type: string | null;
   page_count: number | null;
+  report_date: string | null;
   uploaded_at: string;
   processed_at: string | null;
 }
@@ -55,6 +56,7 @@ export interface ContradictionType {
   doc_b_date: string | null;
   doc_a_filename: string;
   doc_b_filename: string;
+  reason: string | null;
   resolution_status: string;
 }
 
@@ -104,4 +106,81 @@ export interface EntityResolution {
   resolved_value: string;
   confidence: number;
   approved: boolean | null;
+}
+
+// Insights Dashboard types
+export interface InsightContradiction {
+  id: string;
+  dimension_name: string;
+  entity_name: string | null;
+  doc_a_id: string;
+  doc_a_filename: string;
+  doc_a_value: string;
+  doc_a_date: string | null;
+  doc_b_id: string;
+  doc_b_filename: string;
+  doc_b_value: string;
+  doc_b_date: string | null;
+  newer_doc: "a" | "b" | null;
+  reason: string | null;
+  resolution_status: string;
+}
+
+export interface InsightEntityReview {
+  entity_id: string;
+  canonical_name: string;
+  entity_type: string;
+  review_count: number;
+  aliases: string[];
+}
+
+export interface InsightStaleness {
+  dimension_name: string;
+  entity_name: string | null;
+  newest_value: string;
+  newest_doc_filename: string;
+  newest_doc_date: string | null;
+  older_value: string;
+  older_doc_filename: string;
+  older_doc_date: string | null;
+}
+
+export interface InsightsType {
+  total_contradictions: number;
+  total_entities_needing_review: number;
+  total_staleness_items: number;
+  contradictions: InsightContradiction[];
+  entities_needing_review: InsightEntityReview[];
+  staleness_items: InsightStaleness[];
+}
+
+// Entity Timeline types
+export interface TimelineDimensionValue {
+  dimension_name: string;
+  value: string;
+  confidence: number;
+  source_pages: number[] | null;
+}
+
+export interface TimelineDiff {
+  dimension_name: string;
+  old_value: string;
+  new_value: string;
+  change_type: "new" | "updated" | "contradiction";
+}
+
+export interface TimelineNode {
+  document_id: string;
+  document_filename: string;
+  document_date: string | null;
+  is_approximate_date: boolean;
+  dimensions: TimelineDimensionValue[];
+  diffs_from_previous: TimelineDiff[];
+}
+
+export interface EntityTimelineType {
+  entity_id: string;
+  entity_name: string;
+  entity_type: string;
+  timeline: TimelineNode[];
 }

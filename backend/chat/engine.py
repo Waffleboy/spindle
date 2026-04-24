@@ -24,6 +24,11 @@ _RESPONSE_SYSTEM = (
     "4. If a contradiction exists between documents, mention it explicitly.\n"
     "5. If the context does not contain enough information to answer, say so.\n"
     "6. Be concise and direct.\n"
+    "7. When multiple documents contain values for the same dimension, prefer the "
+    "most recent document's value. Note the document date in your answer.\n"
+    "8. When your answer references a fact that has a known contradiction across "
+    "documents, include a note like: 'Note: this value (X from the [date] report) "
+    "differs from Y in the [date] report.'\n"
 )
 
 
@@ -35,20 +40,28 @@ def _format_structured_context(results: list[dict]) -> str:
     for r in results:
         if r.get("type") == "contradiction":
             data = r["data"]
-            lines.append(
+            contradiction_line = (
                 f"CONTRADICTION on '{data['dimension_name']}': "
                 f"'{data['value_a']}' (in {r['document_a']}) vs "
                 f"'{data['value_b']}' (in {r['document_b']}). "
                 f"Status: {data['resolution_status']}"
             )
+            if r.get("temporal_context"):
+                contradiction_line += f" | {r['temporal_context']}"
+            lines.append(contradiction_line)
         else:
             data = r["data"]
             value = data.get("resolved_value") or data.get("raw_value", "N/A")
             pages = r.get("pages") or []
             page_str = ", ".join(f"p.{p}" for p in pages) if pages else "N/A"
+            # Format date with appropriate prefix based on whether it's extracted or approximate
+            date_str = ""
+            if r.get("document_date"):
+                prefix = "uploaded" if r.get("is_approximate_date") else "dated"
+                date_str = f" ({prefix}: {r['document_date'][:10]})"
             lines.append(
                 f"- {data['dimension_name']}: {value} "
-                f"[Doc: {r['document']}, {page_str}] "
+                f"[Doc: {r['document']}{date_str}, {page_str}] "
                 f"(confidence: {data.get('confidence', 'N/A')})"
             )
     return "\n".join(lines)

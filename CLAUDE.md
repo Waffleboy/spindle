@@ -5,3 +5,5 @@ FOLLOW THESE INSTRUCTIONS:
 3) ALWAYS check the existing codebase for functions already implemented before reimplementing them. 
 4) Always think if your solution solves the task at hand, ALWAYS write clean and efficient code. Do not reimplement the wheel.
 5) Use uv instead of pip.
+
+Codex will review you code after. You will be terminated if you make mistakes.

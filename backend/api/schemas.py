@@ -16,6 +16,7 @@ class DocumentResponse(BaseModel):
     file_type: str
     detected_doc_type: str | None = None
     page_count: int | None = None
+    report_date: datetime | None = None
     uploaded_at: datetime
     processed_at: datetime | None = None
 
@@ -158,6 +159,7 @@ class ContradictionResponse(BaseModel):
     value_b: str
     doc_a_date: datetime | None = None
     doc_b_date: datetime | None = None
+    reason: str | None = None
     resolution_status: str
 
     model_config = {"from_attributes": True}
@@ -197,6 +199,41 @@ class TaxonomyTemplateResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Entity Timeline
+# ---------------------------------------------------------------------------
+
+
+class TimelineDimensionValue(BaseModel):
+    dimension_name: str
+    value: str
+    confidence: float
+    source_pages: list | None = None
+
+
+class TimelineDiff(BaseModel):
+    dimension_name: str
+    old_value: str
+    new_value: str
+    change_type: str  # "new" | "updated" | "contradiction"
+
+
+class TimelineNode(BaseModel):
+    document_id: str
+    document_filename: str
+    document_date: datetime | None = None
+    is_approximate_date: bool = False
+    dimensions: list[TimelineDimensionValue]
+    diffs_from_previous: list[TimelineDiff]
+
+
+class EntityTimelineResponse(BaseModel):
+    entity_id: str
+    entity_name: str
+    entity_type: str
+    timeline: list[TimelineNode]
+
+
+# ---------------------------------------------------------------------------
 # Chat
 # ---------------------------------------------------------------------------
 
@@ -211,3 +248,53 @@ class ChatResponse(BaseModel):
     citations: list[dict]
     query_type: str
     suggested_queries: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Insights (aggregated dashboard view)
+# ---------------------------------------------------------------------------
+
+
+class InsightContradiction(BaseModel):
+    id: str
+    dimension_name: str
+    entity_name: str | None = None
+    doc_a_id: str
+    doc_a_filename: str
+    doc_a_value: str
+    doc_a_date: datetime | None = None
+    doc_b_id: str
+    doc_b_filename: str
+    doc_b_value: str
+    doc_b_date: datetime | None = None
+    newer_doc: str | None = None  # "a" or "b" or None if dates unknown
+    reason: str | None = None
+    resolution_status: str
+
+
+class InsightEntityReview(BaseModel):
+    entity_id: str
+    canonical_name: str
+    entity_type: str
+    review_count: int
+    aliases: list[str]
+
+
+class InsightStaleness(BaseModel):
+    dimension_name: str
+    entity_name: str | None = None
+    newest_value: str
+    newest_doc_filename: str
+    newest_doc_date: datetime | None = None
+    older_value: str
+    older_doc_filename: str
+    older_doc_date: datetime | None = None
+
+
+class InsightsResponse(BaseModel):
+    total_contradictions: int
+    total_entities_needing_review: int
+    total_staleness_items: int
+    contradictions: list[InsightContradiction]
+    entities_needing_review: list[InsightEntityReview]
+    staleness_items: list[InsightStaleness]

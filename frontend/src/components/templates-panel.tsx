@@ -37,7 +37,6 @@ export function TemplatesPanel({ templates, onRefresh }: TemplatesPanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
 
-  // Form state
   const [label, setLabel] = useState("")
   const [description, setDescription] = useState("")
   const [dimensions, setDimensions] = useState<DimensionDraft[]>([])
@@ -121,8 +120,8 @@ export function TemplatesPanel({ templates, onRefresh }: TemplatesPanelProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-zinc-800 p-4">
-        <h2 className="text-sm font-semibold text-zinc-200">
+      <div className="flex items-center justify-between border-b border-border p-4">
+        <h2 className="text-sm font-semibold text-foreground">
           Taxonomy Templates
         </h2>
         {!isFormActive && (
@@ -130,7 +129,7 @@ export function TemplatesPanel({ templates, onRefresh }: TemplatesPanelProps) {
             variant="ghost"
             size="sm"
             onClick={startCreate}
-            className="h-7 gap-1 text-xs text-zinc-400 hover:text-zinc-200"
+            className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
             <Plus className="h-3.5 w-3.5" />
             New
@@ -142,14 +141,14 @@ export function TemplatesPanel({ templates, onRefresh }: TemplatesPanelProps) {
         <div className="p-4 space-y-4">
           {/* Create / Edit form */}
           {isFormActive && (
-            <div className="rounded-lg border border-zinc-700 bg-zinc-800/50 p-4 space-y-3">
+            <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-zinc-300">
+                <span className="text-xs font-medium text-foreground">
                   {editingId ? "Edit Template" : "New Template"}
                 </span>
                 <button
                   onClick={resetForm}
-                  className="text-zinc-500 hover:text-zinc-300"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -160,25 +159,25 @@ export function TemplatesPanel({ templates, onRefresh }: TemplatesPanelProps) {
                   placeholder="Label (e.g. Investor Reports)"
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
-                  className="h-8 text-xs bg-zinc-900/50 border-zinc-600"
+                  className="h-8 text-xs bg-background/50 border-border"
                 />
                 <Input
                   placeholder="Description — helps LLM match documents to this template"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="h-8 text-xs bg-zinc-900/50 border-zinc-600"
+                  className="h-8 text-xs bg-background/50 border-border"
                 />
               </div>
 
               {/* Dimensions */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-medium">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                     Required Dimensions ({dimensions.length})
                   </span>
                   <button
                     onClick={addDimension}
-                    className="flex items-center gap-1 text-[10px] text-indigo-400 hover:text-indigo-300"
+                    className="flex items-center gap-1 text-[10px] text-primary hover:text-primary/80"
                   >
                     <Plus className="h-3 w-3" />
                     Add
@@ -188,7 +187,7 @@ export function TemplatesPanel({ templates, onRefresh }: TemplatesPanelProps) {
                 {dimensions.map((dim, idx) => (
                   <div
                     key={idx}
-                    className="flex items-start gap-1.5 rounded-md bg-zinc-900/50 p-2"
+                    className="flex items-start gap-1.5 rounded-md bg-background/50 p-2"
                   >
                     <div className="flex-1 space-y-1">
                       <Input
@@ -197,7 +196,7 @@ export function TemplatesPanel({ templates, onRefresh }: TemplatesPanelProps) {
                         onChange={(e) =>
                           updateDimension(idx, "name", e.target.value)
                         }
-                        className="h-7 text-xs bg-transparent border-zinc-700"
+                        className="h-7 text-xs bg-transparent border-border"
                       />
                       <Input
                         placeholder="Description"
@@ -205,14 +204,14 @@ export function TemplatesPanel({ templates, onRefresh }: TemplatesPanelProps) {
                         onChange={(e) =>
                           updateDimension(idx, "description", e.target.value)
                         }
-                        className="h-7 text-xs bg-transparent border-zinc-700"
+                        className="h-7 text-xs bg-transparent border-border"
                       />
                       <select
                         value={dim.expected_type}
                         onChange={(e) =>
                           updateDimension(idx, "expected_type", e.target.value)
                         }
-                        className="h-7 w-full rounded-md border border-zinc-700 bg-transparent px-2 text-xs text-zinc-300"
+                        className="h-7 w-full rounded-md border border-border bg-transparent px-2 text-xs text-foreground"
                       >
                         {EXPECTED_TYPES.map((t) => (
                           <option key={t} value={t}>
@@ -223,7 +222,7 @@ export function TemplatesPanel({ templates, onRefresh }: TemplatesPanelProps) {
                     </div>
                     <button
                       onClick={() => removeDimension(idx)}
-                      className="mt-1 text-zinc-600 hover:text-red-400"
+                      className="mt-1 text-muted-foreground hover:text-destructive"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -245,10 +244,10 @@ export function TemplatesPanel({ templates, onRefresh }: TemplatesPanelProps) {
           {/* Template list */}
           {templates.length === 0 && !isFormActive && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-xs text-zinc-500 mb-1">
+              <p className="text-xs text-muted-foreground mb-1">
                 No templates configured
               </p>
-              <p className="text-[10px] text-zinc-600 max-w-[200px]">
+              <p className="text-[10px] text-muted-foreground/70 max-w-[200px]">
                 Templates define fixed dimensions that the LLM must extract when
                 it detects matching document types
               </p>
@@ -258,27 +257,27 @@ export function TemplatesPanel({ templates, onRefresh }: TemplatesPanelProps) {
           {templates.map((t) => (
             <div
               key={t.id}
-              className="rounded-lg border border-zinc-800 bg-zinc-900/30 p-3 space-y-2"
+              className="rounded-lg border border-border bg-card p-3 space-y-2"
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="text-xs font-medium text-zinc-200">
+                  <h3 className="text-xs font-medium text-foreground">
                     {t.label}
                   </h3>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
                     {t.description}
                   </p>
                 </div>
                 <div className="flex gap-1">
                   <button
                     onClick={() => startEdit(t)}
-                    className="text-zinc-600 hover:text-zinc-300 p-1"
+                    className="text-muted-foreground hover:text-foreground p-1"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => handleDelete(t.id)}
-                    className="text-zinc-600 hover:text-red-400 p-1"
+                    className="text-muted-foreground hover:text-destructive p-1"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -291,10 +290,10 @@ export function TemplatesPanel({ templates, onRefresh }: TemplatesPanelProps) {
                     <Badge
                       key={idx}
                       variant="secondary"
-                      className="text-[10px] bg-zinc-800 text-zinc-400 border-zinc-700"
+                      className="text-[10px] bg-secondary text-muted-foreground border-border"
                     >
                       {dim.name}
-                      <span className="ml-1 text-zinc-600">
+                      <span className="ml-1 text-muted-foreground/60">
                         {dim.expected_type}
                       </span>
                     </Badge>

@@ -32,8 +32,10 @@ class Document(Base):
     original_filename = Column(Text, nullable=False)
     storage_path = Column(Text, nullable=False)
     file_type = Column(Text, nullable=False)  # pdf, docx, xlsx
+    source_text = Column(Text, nullable=True)  # pre-extracted text (e.g. CSV row splits)
     detected_doc_type = Column(Text, nullable=True)
     page_count = Column(Integer, nullable=True)
+    report_date = Column(DateTime, nullable=True)
     uploaded_at = Column(DateTime, default=_utcnow, nullable=False)
     processed_at = Column(DateTime, nullable=True)
 
@@ -114,6 +116,7 @@ class Contradiction(Base):
     value_b = Column(Text, nullable=False)
     doc_a_date = Column(DateTime, nullable=True)
     doc_b_date = Column(DateTime, nullable=True)
+    reason = Column(Text, nullable=True)
     resolution_status = Column(Text, default="unresolved", nullable=False)
 
     # Relationships

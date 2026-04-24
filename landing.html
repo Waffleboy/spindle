@@ -1,0 +1,1782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spindle — Intelligence from your reports</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-deep: #060609;
+            --bg: #0a0a10;
+            --bg-card: #0e0e17;
+            --bg-card-hover: #131320;
+            --bg-elevated: #17172a;
+            --border: #1a1a2e;
+            --border-dim: #111120;
+            --text: #e6e1d8;
+            --text-secondary: #8a8598;
+            --text-dim: #4e4a60;
+            --gold: #c4a04e;
+            --gold-bright: #d9b85c;
+            --gold-glow: rgba(196,160,78,0.15);
+            --gold-subtle: rgba(196,160,78,0.06);
+            --red: #e84a6a;
+            --red-glow: rgba(232,74,106,0.15);
+            --amber: #e8a44a;
+            --amber-glow: rgba(232,164,74,0.15);
+            --green: #4ae88b;
+            --green-glow: rgba(74,232,139,0.15);
+            --serif: 'Instrument Serif', Georgia, serif;
+            --sans: 'Outfit', system-ui, sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+
+        body {
+            font-family: var(--sans);
+            background: var(--bg-deep);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            background-image: radial-gradient(rgba(196,160,78,0.018) 1px, transparent 1px);
+            background-size: 48px 48px;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.5;
+        }
+
+        ::selection { background: var(--gold); color: var(--bg-deep); }
+
+        /* ── Typography ── */
+        h1, h2, h3 { font-family: var(--serif); font-weight: 400; line-height: 1.15; }
+
+        .section-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 clamp(24px, 4vw, 48px);
+        }
+
+        /* ── Navigation ── */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px clamp(24px, 4vw, 48px);
+            background: rgba(6,6,9,0.7);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-dim);
+        }
+
+        .nav-wordmark {
+            font-family: var(--serif);
+            font-size: 1.25rem;
+            letter-spacing: 0.12em;
+            color: var(--gold);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 36px;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 400;
+            letter-spacing: 0.03em;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover { color: var(--text); }
+
+        .nav-cta {
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: var(--bg-deep);
+            background: var(--gold);
+            text-decoration: none;
+            padding: 8px 20px;
+            border-radius: 4px;
+            letter-spacing: 0.03em;
+            transition: background 0.3s, transform 0.2s;
+        }
+
+        .nav-cta:hover { background: var(--gold-bright); transform: translateY(-1px); }
+
+        /* ── Hero ── */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 120px 24px 80px;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 900px;
+            height: 700px;
+            background: radial-gradient(ellipse, rgba(196,160,78,0.04) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-scan {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+            opacity: 0;
+            animation: scan 10s ease-in-out 1s infinite;
+            pointer-events: none;
+        }
+
+        @keyframes scan {
+            0%, 100% { top: 15%; opacity: 0; }
+            5% { opacity: 0.15; }
+            95% { opacity: 0.15; }
+            50% { top: 85%; opacity: 0.08; }
+        }
+
+        .hero-content { position: relative; max-width: 800px; }
+
+        .hero-label {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 28px;
+            animation: fadeUp 0.8s var(--ease-out) 0.2s both;
+        }
+
+        .hero-title {
+            font-size: clamp(3rem, 6.5vw, 5.5rem);
+            color: var(--text);
+            margin-bottom: 28px;
+            animation: fadeUp 0.8s var(--ease-out) 0.4s both;
+        }
+
+        .hero-title em {
+            font-style: italic;
+            color: var(--gold);
+        }
+
+        .hero-sub {
+            font-size: clamp(1.0625rem, 1.8vw, 1.25rem);
+            color: var(--text-secondary);
+            max-width: 560px;
+            margin: 0 auto 40px;
+            font-weight: 300;
+            animation: fadeUp 0.8s var(--ease-out) 0.6s both;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            animation: fadeUp 0.8s var(--ease-out) 0.8s both;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 28px;
+            border-radius: 4px;
+            font-family: var(--sans);
+            font-size: 0.9375rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s var(--ease-out);
+            letter-spacing: 0.02em;
+        }
+
+        .btn-primary {
+            background: var(--gold);
+            color: var(--bg-deep);
+        }
+
+        .btn-primary:hover { background: var(--gold-bright); transform: translateY(-2px); box-shadow: 0 8px 30px var(--gold-glow); }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-ghost:hover { color: var(--text); border-color: var(--text-dim); }
+
+        .btn-large { padding: 14px 36px; font-size: 1rem; }
+
+        /* ── Stats ── */
+        .stats {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            padding: 0 24px 0;
+            margin-top: -40px;
+            margin-bottom: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .stat {
+            text-align: center;
+            padding: 32px 48px;
+        }
+
+        .stat-divider {
+            width: 1px;
+            height: 48px;
+            background: linear-gradient(180deg, transparent, var(--gold), transparent);
+            opacity: 0.3;
+        }
+
+        .stat-number {
+            display: block;
+            font-family: var(--serif);
+            font-size: 2.5rem;
+            color: var(--gold);
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .stat-unit {
+            display: block;
+            font-family: var(--mono);
+            font-size: 0.6875rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            display: block;
+            font-size: 0.8125rem;
+            color: var(--text-dim);
+            max-width: 200px;
+            line-height: 1.4;
+        }
+
+        /* ── Problem ── */
+        .problem {
+            padding: clamp(80px, 12vh, 160px) 0;
+            border-top: 1px solid var(--border-dim);
+            border-bottom: 1px solid var(--border-dim);
+        }
+
+        .problem-quote {
+            font-family: var(--serif);
+            font-style: italic;
+            font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            max-width: 780px;
+            margin: 0 auto 40px;
+            text-align: center;
+            position: relative;
+            padding: 0 20px;
+        }
+
+        .problem-quote::before {
+            content: '';
+            display: block;
+            width: 40px;
+            height: 2px;
+            background: var(--gold);
+            margin: 0 auto 32px;
+        }
+
+        .problem-answer {
+            font-family: var(--serif);
+            font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+            color: var(--gold);
+            text-align: center;
+        }
+
+        /* ── Pipeline ── */
+        .pipeline {
+            padding: clamp(100px, 14vh, 180px) 0;
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 4vw, 3rem);
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .section-sub {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 1.0625rem;
+            margin-bottom: 72px;
+            font-weight: 300;
+        }
+
+        .pipeline-flow {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 0;
+            position: relative;
+        }
+
+        .pipeline-step {
+            flex: 0 0 180px;
+            text-align: center;
+            position: relative;
+        }
+
+        .step-number {
+            font-family: var(--mono);
+            font-size: 0.6875rem;
+            letter-spacing: 0.1em;
+            color: var(--gold);
+            opacity: 0.6;
+            margin-bottom: 12px;
+        }
+
+        .step-icon-wrap {
+            width: 56px;
+            height: 56px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            transition: border-color 0.4s, background 0.4s;
+        }
+
+        .step-icon-wrap svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--text-secondary);
+            fill: none;
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .pipeline-step.visible .step-icon-wrap {
+            border-color: var(--gold);
+            background: var(--gold-subtle);
+        }
+
+        .pipeline-step.visible .step-icon-wrap svg { stroke: var(--gold); }
+
+        .pipeline-step h3 {
+            font-size: 1.125rem;
+            margin-bottom: 8px;
+        }
+
+        .pipeline-step p {
+            font-size: 0.8125rem;
+            color: var(--text-dim);
+            line-height: 1.5;
+            max-width: 160px;
+            margin: 0 auto;
+        }
+
+        .pipeline-connector {
+            flex: 0 0 40px;
+            height: 1px;
+            background: linear-gradient(90deg, var(--border), var(--gold), var(--border));
+            opacity: 0.3;
+            margin-top: 50px;
+        }
+
+        /* ── Features ── */
+        .features {
+            padding: clamp(60px, 8vh, 100px) 0;
+        }
+
+        .feature {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: clamp(60px, 8vh, 100px) clamp(24px, 4vw, 48px);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(48px, 6vw, 100px);
+            align-items: center;
+        }
+
+        .feature-right .feature-text { order: -1; }
+
+        .feature-label {
+            font-family: var(--mono);
+            font-size: 0.6875rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 16px;
+        }
+
+        .feature h2 {
+            font-size: clamp(1.5rem, 3vw, 2.25rem);
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+
+        .feature p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 12px;
+            font-weight: 300;
+        }
+
+        .feature-detail {
+            font-size: 0.9375rem !important;
+            color: var(--text-dim) !important;
+        }
+
+        /* Feature Visuals */
+        .feature-visual {
+            position: relative;
+        }
+
+        /* Schema Discovery Visual */
+        .schema-demo {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .schema-doc {
+            flex: 0 0 120px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 20px 16px;
+        }
+
+        .doc-lines { display: flex; flex-direction: column; gap: 8px; }
+
+        .doc-line {
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+        }
+
+        .doc-line.short { width: 60%; }
+
+        .schema-arrow-icon {
+            color: var(--text-dim);
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            opacity: 0.5;
+        }
+
+        .schema-columns {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .schema-col {
+            font-family: var(--mono);
+            font-size: 0.8125rem;
+            padding: 10px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            border-left: 2px solid var(--gold);
+            color: var(--text-secondary);
+            opacity: 0;
+            transform: translateX(20px);
+            transition: opacity 0.5s var(--ease-out), transform 0.5s var(--ease-out);
+        }
+
+        .schema-col.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* Entity Resolution Visual */
+        .entity-demo {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .entity-group {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .entity-before-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .entity-name-tag {
+            font-family: var(--mono);
+            font-size: 0.8125rem;
+            padding: 8px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .entity-connector {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+
+        .connector-line {
+            width: 48px;
+            height: 1px;
+            background: var(--amber);
+            opacity: 0;
+            transform: scaleX(0);
+            transition: opacity 0.5s, transform 0.6s var(--ease-out);
+            transform-origin: left;
+        }
+
+        .connector-line.visible { opacity: 0.5; transform: scaleX(1); }
+
+        .entity-canonical-card {
+            background: var(--bg-card);
+            border: 1px solid var(--amber);
+            border-radius: 6px;
+            padding: 12px 18px;
+            flex-shrink: 0;
+        }
+
+        .canonical-label {
+            font-family: var(--mono);
+            font-size: 0.625rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--amber);
+            margin-bottom: 4px;
+        }
+
+        .canonical-value {
+            font-family: var(--mono);
+            font-size: 0.875rem;
+            color: var(--text);
+        }
+
+        .entity-confidence {
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: var(--green);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 1s var(--ease-out) 0.5s;
+        }
+
+        .confidence-fill.visible { width: 94%; }
+
+        .confidence-text {
+            font-family: var(--mono);
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+        }
+
+        /* Contradiction Visual */
+        .contradiction-demo {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .contradiction-card {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .contradiction-card-a {
+            border-color: var(--gold);
+            box-shadow: 0 0 30px var(--gold-glow);
+        }
+
+        .contradiction-card-b {
+            opacity: 0.7;
+        }
+
+        .contra-source {
+            font-family: var(--mono);
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+
+        .contra-value {
+            font-family: var(--mono);
+            font-size: 1.75rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .contradiction-card-a .contra-value { color: var(--gold); }
+        .contradiction-card-b .contra-value { color: var(--red); text-decoration: line-through; text-decoration-color: rgba(232,74,106,0.4); }
+
+        .contra-badge {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 0.625rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 3px;
+            background: var(--gold-glow);
+            color: var(--gold);
+        }
+
+        .contra-badge-old {
+            background: var(--red-glow);
+            color: var(--red);
+        }
+
+        .contradiction-vs {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .vs-line {
+            width: 1px;
+            height: 20px;
+            background: var(--red);
+            opacity: 0.4;
+        }
+
+        .vs-symbol {
+            font-family: var(--mono);
+            font-size: 0.875rem;
+            color: var(--red);
+            font-weight: 500;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            border: 1px solid var(--red);
+            background: var(--red-glow);
+            animation: pulse-red 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 var(--red-glow); }
+            50% { box-shadow: 0 0 20px 4px var(--red-glow); }
+        }
+
+        /* ── Product Preview ── */
+        .preview {
+            padding: clamp(100px, 14vh, 180px) 0;
+            border-top: 1px solid var(--border-dim);
+        }
+
+        .preview-frame {
+            max-width: 1100px;
+            margin: 0 auto;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            background: var(--bg-card);
+            box-shadow:
+                0 0 0 1px var(--border-dim),
+                0 20px 60px rgba(0,0,0,0.5),
+                0 0 120px var(--gold-subtle);
+        }
+
+        .preview-chrome {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border-dim);
+        }
+
+        .chrome-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .chrome-dots span {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--border);
+        }
+
+        .chrome-dots span:first-child { background: #e84a4a; opacity: 0.7; }
+        .chrome-dots span:nth-child(2) { background: #e8a44a; opacity: 0.7; }
+        .chrome-dots span:nth-child(3) { background: #4ae84a; opacity: 0.7; }
+
+        .chrome-url {
+            font-family: var(--mono);
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            background: var(--bg-deep);
+            padding: 4px 16px;
+            border-radius: 4px;
+            flex: 1;
+            max-width: 300px;
+        }
+
+        .preview-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border-dim);
+            background: var(--bg);
+        }
+
+        .preview-topbar-brand {
+            font-family: var(--serif);
+            font-size: 0.875rem;
+            color: var(--gold);
+            letter-spacing: 0.08em;
+        }
+
+        .preview-topbar-subtitle {
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            margin-left: 10px;
+            font-family: var(--sans);
+            letter-spacing: normal;
+        }
+
+        .preview-progress {
+            display: flex;
+            gap: 3px;
+        }
+
+        .progress-seg {
+            height: 3px;
+            width: 32px;
+            background: var(--gold);
+            border-radius: 2px;
+            opacity: 0.8;
+        }
+
+        .preview-app {
+            display: grid;
+            grid-template-columns: 200px 1fr 260px;
+            min-height: 360px;
+        }
+
+        /* Preview Left Panel */
+        .prev-left {
+            border-right: 1px solid var(--border-dim);
+            padding: 12px;
+        }
+
+        .prev-panel-title {
+            font-family: var(--mono);
+            font-size: 0.625rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+        }
+
+        .prev-upload {
+            border: 1px dashed var(--border);
+            border-radius: 4px;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+        }
+
+        .prev-doc {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 8px;
+            border-radius: 3px;
+            margin-bottom: 3px;
+            font-size: 0.6875rem;
+            color: var(--text-secondary);
+            transition: background 0.2s;
+        }
+
+        .prev-doc:first-of-type { background: var(--bg-card-hover); }
+
+        .prev-doc-icon {
+            width: 14px;
+            height: 14px;
+            background: var(--red-glow);
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            color: var(--red);
+            flex-shrink: 0;
+        }
+
+        .prev-doc-name {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .prev-doc-date {
+            font-family: var(--mono);
+            font-size: 0.5625rem;
+            color: var(--text-dim);
+            flex-shrink: 0;
+        }
+
+        .prev-doc-check {
+            color: var(--green);
+            font-size: 0.625rem;
+            flex-shrink: 0;
+        }
+
+        /* Preview Center Panel */
+        .prev-center {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .prev-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--border-dim);
+        }
+
+        .prev-tab {
+            padding: 8px 18px;
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            border-bottom: 2px solid transparent;
+            cursor: default;
+            font-weight: 500;
+        }
+
+        .prev-tab.active {
+            color: var(--gold);
+            border-bottom-color: var(--gold);
+        }
+
+        .prev-grid {
+            flex: 1;
+            padding: 8px;
+            overflow: hidden;
+        }
+
+        .prev-grid-header,
+        .prev-grid-row {
+            display: grid;
+            grid-template-columns: 1.3fr 0.8fr 1fr 0.8fr 0.7fr;
+            gap: 1px;
+            font-size: 0.6875rem;
+        }
+
+        .prev-grid-header {
+            margin-bottom: 4px;
+        }
+
+        .prev-grid-header span {
+            padding: 6px 8px;
+            font-family: var(--mono);
+            font-size: 0.5625rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border-dim);
+        }
+
+        .prev-grid-row {
+            margin-bottom: 1px;
+        }
+
+        .prev-grid-row span {
+            padding: 7px 8px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-dim);
+            font-size: 0.6875rem;
+        }
+
+        .prev-cell-red {
+            background: var(--red-glow) !important;
+            color: var(--text) !important;
+            position: relative;
+        }
+
+        .prev-cell-amber {
+            background: var(--amber-glow) !important;
+            color: var(--text) !important;
+        }
+
+        .prev-cell-green {
+            border-left: 2px solid var(--green) !important;
+        }
+
+        /* Preview Right Panel */
+        .prev-right {
+            border-left: 1px solid var(--border-dim);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .prev-right .prev-panel-title {
+            padding: 12px 12px 8px;
+        }
+
+        .prev-chat-messages {
+            flex: 1;
+            padding: 0 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow: hidden;
+        }
+
+        .prev-chat-msg {
+            font-size: 0.6875rem;
+            line-height: 1.5;
+            padding: 8px 10px;
+            border-radius: 6px;
+            max-width: 95%;
+        }
+
+        .prev-chat-user {
+            background: var(--bg-elevated);
+            color: var(--text);
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+
+        .prev-chat-assistant {
+            background: var(--bg);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-dim);
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+
+        .prev-citation {
+            display: inline-block;
+            font-family: var(--mono);
+            font-size: 0.5625rem;
+            padding: 1px 6px;
+            background: var(--gold-subtle);
+            color: var(--gold);
+            border-radius: 2px;
+            margin-top: 4px;
+            margin-right: 4px;
+        }
+
+        .prev-chat-input {
+            padding: 10px 12px;
+            border-top: 1px solid var(--border-dim);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .prev-chat-input-field {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+        }
+
+        .prev-chat-send {
+            width: 24px;
+            height: 24px;
+            background: var(--gold);
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .prev-chat-send svg {
+            width: 12px;
+            height: 12px;
+            stroke: var(--bg-deep);
+            fill: none;
+            stroke-width: 2;
+        }
+
+        /* Contradiction tooltip in preview */
+        .prev-cell-red .cell-tooltip {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%) translateY(5px);
+            width: 200px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--red);
+            border-radius: 6px;
+            padding: 10px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+            z-index: 10;
+        }
+
+        .prev-cell-red:hover .cell-tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .tooltip-title {
+            font-family: var(--mono);
+            font-size: 0.5625rem;
+            color: var(--red);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .tooltip-values {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .tooltip-val {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            color: var(--text);
+        }
+
+        .tooltip-val small {
+            display: block;
+            font-size: 0.5625rem;
+            color: var(--text-dim);
+            font-family: var(--sans);
+        }
+
+        .tooltip-temporal {
+            font-size: 0.5625rem;
+            color: var(--gold);
+            text-align: center;
+        }
+
+        /* ── CTA ── */
+        .cta-section {
+            padding: clamp(100px, 14vh, 180px) 0;
+            text-align: center;
+            position: relative;
+        }
+
+        .cta-section::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 500px;
+            background: radial-gradient(ellipse, rgba(196,160,78,0.03) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .cta-title {
+            font-size: clamp(2rem, 4vw, 3.5rem);
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .cta-title em {
+            font-style: italic;
+            color: var(--gold);
+        }
+
+        .cta-sub {
+            font-size: 1.0625rem;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        .cta-form {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            max-width: 460px;
+            margin: 0 auto;
+        }
+
+        .cta-input {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 14px 20px;
+            font-family: var(--sans);
+            font-size: 0.9375rem;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .cta-input::placeholder { color: var(--text-dim); }
+        .cta-input:focus { border-color: var(--gold); }
+
+        /* ── Footer ── */
+        .footer {
+            border-top: 1px solid var(--border-dim);
+            padding: 48px 0;
+            text-align: center;
+        }
+
+        .footer-brand {
+            font-family: var(--serif);
+            font-size: 1rem;
+            letter-spacing: 0.12em;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .footer-tagline {
+            font-size: 0.8125rem;
+            color: var(--text-dim);
+            font-weight: 300;
+        }
+
+        /* ── Animations ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .reveal-delay-1 { transition-delay: 0.1s; }
+        .reveal-delay-2 { transition-delay: 0.2s; }
+        .reveal-delay-3 { transition-delay: 0.3s; }
+        .reveal-delay-4 { transition-delay: 0.4s; }
+        .reveal-delay-5 { transition-delay: 0.5s; }
+
+        /* Cursor blink in chat */
+        .cursor-blink::after {
+            content: '|';
+            animation: blink 1s step-end infinite;
+            color: var(--gold);
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 900px) {
+            .nav-links { display: none; }
+
+            .stats { flex-direction: column; gap: 0; }
+            .stat-divider { width: 48px; height: 1px; }
+
+            .pipeline-flow {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .pipeline-connector {
+                width: 1px;
+                height: 24px;
+                margin-top: 0;
+            }
+
+            .feature {
+                grid-template-columns: 1fr;
+                gap: 32px;
+            }
+
+            .feature-right .feature-text { order: 0; }
+
+            .preview-app {
+                grid-template-columns: 1fr;
+            }
+
+            .prev-left { display: none; }
+            .prev-right { min-height: 200px; }
+
+            .contradiction-demo { flex-direction: column; }
+            .contradiction-vs { flex-direction: row; }
+            .vs-line { width: 20px; height: 1px; }
+
+            .cta-form { flex-direction: column; }
+
+            .schema-demo { flex-direction: column; }
+        }
+
+        @media (max-width: 600px) {
+            .prev-grid-header,
+            .prev-grid-row {
+                grid-template-columns: 1.2fr 0.8fr 1fr;
+            }
+
+            .prev-grid-header span:nth-child(n+4),
+            .prev-grid-row span:nth-child(n+4) {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="nav">
+    <div class="nav-wordmark">SPINDLE</div>
+    <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="#preview">Preview</a>
+    </div>
+    <a href="#access" class="nav-cta">Request Access</a>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="hero-scan"></div>
+    <div class="hero-content">
+        <div class="hero-label">Investor Report Intelligence</div>
+        <h1 class="hero-title">Intelligence from<br><em>your reports</em></h1>
+        <p class="hero-sub">Drop in analyst reports. In 30 seconds, know what changed, what conflicts, and what matters.</p>
+        <div class="hero-actions">
+            <a href="#how-it-works" class="btn btn-primary">See how it works</a>
+            <a href="#access" class="btn btn-ghost">Request early access</a>
+        </div>
+    </div>
+</section>
+
+<!-- Stats -->
+<section class="stats reveal">
+    <div class="stat">
+        <span class="stat-number" data-count="30">0</span>
+        <span class="stat-unit">seconds</span>
+        <span class="stat-label">To cross-reference what takes hours</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+        <span class="stat-number">Zero</span>
+        <span class="stat-unit">configuration</span>
+        <span class="stat-label">Discovers the schema from your documents</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+        <span class="stat-number">Every</span>
+        <span class="stat-unit">contradiction</span>
+        <span class="stat-label">Surfaced, not buried in a footnote</span>
+    </div>
+</section>
+
+<!-- Problem -->
+<section class="problem">
+    <div class="section-container">
+        <blockquote class="problem-quote reveal">
+            Every analyst I've worked with spends hours cross-referencing reports manually &mdash;
+            checking if revenue numbers match, figuring out that &lsquo;Tan Kim Bock&rsquo; and
+            &lsquo;Bock Kim Tan&rsquo; are the same person, spotting which report supersedes which.
+        </blockquote>
+        <p class="problem-answer reveal reveal-delay-2">Spindle does that in 30 seconds.</p>
+    </div>
+</section>
+
+<!-- Pipeline -->
+<section class="pipeline" id="how-it-works">
+    <div class="section-container">
+        <h2 class="section-title reveal">How it works</h2>
+        <p class="section-sub reveal reveal-delay-1">Five steps. One click. Full intelligence.</p>
+
+        <div class="pipeline-flow">
+            <div class="pipeline-step reveal reveal-delay-1">
+                <div class="step-number">01</div>
+                <div class="step-icon-wrap">
+                    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <h3>Drop</h3>
+                <p>Upload your analyst reports &mdash; PDF, Word, or Excel</p>
+            </div>
+            <div class="pipeline-connector reveal reveal-delay-1"></div>
+            <div class="pipeline-step reveal reveal-delay-2">
+                <div class="step-number">02</div>
+                <div class="step-icon-wrap">
+                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </div>
+                <h3>Discover</h3>
+                <p>AI reads your documents and decides what dimensions matter</p>
+            </div>
+            <div class="pipeline-connector reveal reveal-delay-2"></div>
+            <div class="pipeline-step reveal reveal-delay-3">
+                <div class="step-number">03</div>
+                <div class="step-icon-wrap">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </div>
+                <h3>Extract</h3>
+                <p>Structured data pulled from every page, table, and chart</p>
+            </div>
+            <div class="pipeline-connector reveal reveal-delay-3"></div>
+            <div class="pipeline-step reveal reveal-delay-4">
+                <div class="step-number">04</div>
+                <div class="step-icon-wrap">
+                    <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                </div>
+                <h3>Resolve</h3>
+                <p>Entities matched across documents &mdash; same person, same company</p>
+            </div>
+            <div class="pipeline-connector reveal reveal-delay-4"></div>
+            <div class="pipeline-step reveal reveal-delay-5">
+                <div class="step-number">05</div>
+                <div class="step-icon-wrap">
+                    <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
+                <h3>Detect</h3>
+                <p>Contradictions flagged with temporal awareness</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section class="features" id="features">
+
+    <!-- Schema Discovery -->
+    <div class="feature feature-left">
+        <div class="feature-visual reveal">
+            <div class="schema-demo">
+                <div class="schema-doc">
+                    <div class="doc-lines">
+                        <div class="doc-line"></div>
+                        <div class="doc-line"></div>
+                        <div class="doc-line short"></div>
+                        <div class="doc-line"></div>
+                        <div class="doc-line short"></div>
+                        <div class="doc-line"></div>
+                    </div>
+                </div>
+                <div class="schema-arrow-icon">&rarr;</div>
+                <div class="schema-columns" id="schema-cols">
+                    <div class="schema-col">Company Name</div>
+                    <div class="schema-col">Revenue</div>
+                    <div class="schema-col">Reporting Period</div>
+                    <div class="schema-col">Key Personnel</div>
+                    <div class="schema-col">Risk Factors</div>
+                </div>
+            </div>
+        </div>
+        <div class="feature-text reveal reveal-delay-2">
+            <div class="feature-label">Autonomous Schema Discovery</div>
+            <h2>These columns weren't configured.</h2>
+            <p>The system read your documents and decided what matters. No predefined categories. No setup wizard. No schema file.</p>
+            <p class="feature-detail">Upload investor reports and Spindle discovers dimensions like Revenue, Reporting Period, Key Personnel, Risk Factors &mdash; all from the content itself.</p>
+        </div>
+    </div>
+
+    <!-- Entity Resolution -->
+    <div class="feature feature-right">
+        <div class="feature-text reveal">
+            <div class="feature-label">Cross-Document Entity Intelligence</div>
+            <h2>Same person. Different name.</h2>
+            <p>Spindle matches entities across reports by context. When it's not confident, it asks you to confirm.</p>
+            <p class="feature-detail">Full traceability: every alias, every source document, every confidence score.</p>
+        </div>
+        <div class="feature-visual reveal reveal-delay-2">
+            <div class="entity-demo" id="entity-demo">
+                <div class="entity-group">
+                    <div class="entity-before-list">
+                        <div class="entity-name-tag">Tan Kim Bock</div>
+                        <div class="entity-name-tag">Bock Kim Tan</div>
+                        <div class="entity-name-tag">T.K. Bock</div>
+                    </div>
+                    <div class="entity-connector">
+                        <div class="connector-line" data-line="1"></div>
+                        <div class="connector-line" data-line="2"></div>
+                        <div class="connector-line" data-line="3"></div>
+                    </div>
+                    <div class="entity-canonical-card">
+                        <div class="canonical-label">Canonical</div>
+                        <div class="canonical-value">Tan Kim Bock</div>
+                    </div>
+                </div>
+                <div class="entity-confidence">
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" id="confidence-fill"></div>
+                    </div>
+                    <div class="confidence-text">94% confidence</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contradictions -->
+    <div class="feature feature-left">
+        <div class="feature-visual reveal">
+            <div class="contradiction-demo">
+                <div class="contradiction-card contradiction-card-a">
+                    <div class="contra-source">Q2 Report &mdash; Aug 2025</div>
+                    <div class="contra-value">$4.2M</div>
+                    <div class="contra-badge">Most Recent</div>
+                </div>
+                <div class="contradiction-vs">
+                    <div class="vs-line"></div>
+                    <div class="vs-symbol">&ne;</div>
+                    <div class="vs-line"></div>
+                </div>
+                <div class="contradiction-card contradiction-card-b">
+                    <div class="contra-source">Q1 Report &mdash; Jul 2025</div>
+                    <div class="contra-value">$3.9M</div>
+                    <div class="contra-badge contra-badge-old">Superseded</div>
+                </div>
+            </div>
+        </div>
+        <div class="feature-text reveal reveal-delay-2">
+            <div class="feature-label">Temporal Contradiction Detection</div>
+            <h2>It knows August supersedes July.</h2>
+            <p>Revenue was $4.2M in the August report. $3.9M in July. Spindle cross-references every report and knows which is newer.</p>
+            <p class="feature-detail">Contradictions are surfaced as alerts, not hidden in cells. You decide what to trust &mdash; with full context.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Product Preview -->
+<section class="preview" id="preview">
+    <div class="section-container">
+        <h2 class="section-title reveal">See it in action</h2>
+        <p class="section-sub reveal reveal-delay-1">Three panels. Complete intelligence.</p>
+
+        <div class="preview-frame reveal reveal-delay-2">
+            <div class="preview-chrome">
+                <div class="chrome-dots"><span></span><span></span><span></span></div>
+                <div class="chrome-url">localhost:5173</div>
+            </div>
+            <div class="preview-topbar">
+                <div>
+                    <span class="preview-topbar-brand">SPINDLE</span>
+                    <span class="preview-topbar-subtitle">Intelligence from your reports</span>
+                </div>
+                <div class="preview-progress">
+                    <div class="progress-seg"></div>
+                    <div class="progress-seg"></div>
+                    <div class="progress-seg"></div>
+                    <div class="progress-seg"></div>
+                    <div class="progress-seg"></div>
+                </div>
+            </div>
+            <div class="preview-app">
+                <!-- Left: Documents -->
+                <div class="prev-left">
+                    <div class="prev-panel-title">Documents</div>
+                    <div class="prev-upload">Drop files here</div>
+                    <div class="prev-doc">
+                        <div class="prev-doc-icon">P</div>
+                        <span class="prev-doc-name">Q2_2025_Report.pdf</span>
+                        <span class="prev-doc-date">Aug 25</span>
+                        <span class="prev-doc-check">&#10003;</span>
+                    </div>
+                    <div class="prev-doc">
+                        <div class="prev-doc-icon">P</div>
+                        <span class="prev-doc-name">Q1_2025_Report.pdf</span>
+                        <span class="prev-doc-date">Jul 25</span>
+                        <span class="prev-doc-check">&#10003;</span>
+                    </div>
+                    <div class="prev-doc">
+                        <div class="prev-doc-icon">W</div>
+                        <span class="prev-doc-name">Annual_Review_2024.docx</span>
+                        <span class="prev-doc-date">Jan 25</span>
+                        <span class="prev-doc-check">&#10003;</span>
+                    </div>
+                    <div class="prev-doc">
+                        <div class="prev-doc-icon">P</div>
+                        <span class="prev-doc-name">Q4_2024_Report.pdf</span>
+                        <span class="prev-doc-date">Oct 24</span>
+                        <span class="prev-doc-check">&#10003;</span>
+                    </div>
+                    <div class="prev-doc">
+                        <div class="prev-doc-icon">X</div>
+                        <span class="prev-doc-name">Financial_Data_2024.xlsx</span>
+                        <span class="prev-doc-date">Dec 24</span>
+                        <span class="prev-doc-check">&#10003;</span>
+                    </div>
+                </div>
+
+                <!-- Center: Taxonomy Grid -->
+                <div class="prev-center">
+                    <div class="prev-tabs">
+                        <span class="prev-tab active">Insights</span>
+                        <span class="prev-tab">Taxonomy</span>
+                        <span class="prev-tab">Templates</span>
+                    </div>
+                    <div class="prev-grid">
+                        <div class="prev-grid-header">
+                            <span>Document</span>
+                            <span>Revenue</span>
+                            <span>CEO</span>
+                            <span>Period</span>
+                            <span>Risk</span>
+                        </div>
+                        <div class="prev-grid-row">
+                            <span>Q2 2025 Report</span>
+                            <span class="prev-cell-red">
+                                $4.2M
+                                <div class="cell-tooltip">
+                                    <div class="tooltip-title">Contradiction Detected</div>
+                                    <div class="tooltip-values">
+                                        <div class="tooltip-val">$4.2M<small>Q2 Report, Aug</small></div>
+                                        <div class="tooltip-val">$3.9M<small>Q1 Report, Jul</small></div>
+                                    </div>
+                                    <div class="tooltip-temporal">Aug supersedes Jul &rarr;</div>
+                                </div>
+                            </span>
+                            <span class="prev-cell-amber">Tan Kim Bock</span>
+                            <span>Q2 2025</span>
+                            <span>Medium</span>
+                        </div>
+                        <div class="prev-grid-row">
+                            <span>Q1 2025 Report</span>
+                            <span class="prev-cell-red">$3.9M</span>
+                            <span class="prev-cell-amber">Bock Kim Tan</span>
+                            <span>Q1 2025</span>
+                            <span>Med-High</span>
+                        </div>
+                        <div class="prev-grid-row">
+                            <span>Annual Review 2024</span>
+                            <span class="prev-cell-green">$14.8M</span>
+                            <span class="prev-cell-green">Tan Kim Bock</span>
+                            <span>FY 2024</span>
+                            <span>Low</span>
+                        </div>
+                        <div class="prev-grid-row">
+                            <span>Q4 2024 Report</span>
+                            <span>$3.6M</span>
+                            <span class="prev-cell-amber">T.K. Bock</span>
+                            <span>Q4 2024</span>
+                            <span>Low</span>
+                        </div>
+                        <div class="prev-grid-row">
+                            <span>Financial Data 2024</span>
+                            <span>$14.8M</span>
+                            <span>Tan Kim Bock</span>
+                            <span>FY 2024</span>
+                            <span>Low</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Chat -->
+                <div class="prev-right">
+                    <div class="prev-panel-title">Chat</div>
+                    <div class="prev-chat-messages">
+                        <div class="prev-chat-msg prev-chat-user">How did revenue change over the last 3 reports?</div>
+                        <div class="prev-chat-msg prev-chat-assistant">
+                            Revenue increased from <strong>$3.6M</strong> (Q4 2024) to <strong>$3.9M</strong> (Q1 2025) to <strong>$4.2M</strong> (Q2 2025), representing 16.7% growth over three quarters.
+                            <br>
+                            <span class="prev-citation">Q2 Report, p.3</span>
+                            <span class="prev-citation">Q1 Report, p.5</span>
+                            <span class="prev-citation">Q4 Report, p.4</span>
+                            <br><br>
+                            <em style="color:var(--amber);font-size:0.625rem;">Note: Q2 revenue ($4.2M) contradicts Q1 ($3.9M) for the overlapping period. Q2 is more recent.</em>
+                        </div>
+                    </div>
+                    <div class="prev-chat-input">
+                        <div class="prev-chat-input-field cursor-blink">Ask about your reports</div>
+                        <div class="prev-chat-send">
+                            <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="access">
+    <div class="section-container">
+        <h2 class="cta-title reveal">Stop cross-referencing.<br><em>Start knowing.</em></h2>
+        <p class="cta-sub reveal reveal-delay-1">Request early access to Spindle.</p>
+        <div class="cta-form reveal reveal-delay-2">
+            <input type="email" placeholder="your@email.com" class="cta-input">
+            <button class="btn btn-primary btn-large">Request Access</button>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="section-container">
+        <div class="footer-brand">SPINDLE</div>
+        <p class="footer-tagline">Built for analysts who'd rather analyze than organize.</p>
+    </div>
+</footer>
+
+<script>
+(function() {
+    /* ── Scroll Reveal ── */
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+    reveals.forEach(function(el) { observer.observe(el); });
+
+    /* ── Counter Animation ── */
+    var counted = false;
+    var counterEl = document.querySelector('[data-count]');
+    var counterObserver = new IntersectionObserver(function(entries) {
+        if (entries[0].isIntersecting && !counted) {
+            counted = true;
+            var target = parseInt(counterEl.dataset.count);
+            var current = 0;
+            var duration = 1200;
+            var start = performance.now();
+            function tick(now) {
+                var progress = Math.min((now - start) / duration, 1);
+                var eased = 1 - Math.pow(1 - progress, 3);
+                counterEl.textContent = Math.round(eased * target);
+                if (progress < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+        }
+    }, { threshold: 0.5 });
+
+    if (counterEl) counterObserver.observe(counterEl);
+
+    /* ── Schema Columns Stagger ── */
+    var schemaCols = document.querySelectorAll('#schema-cols .schema-col');
+    var schemaObserver = new IntersectionObserver(function(entries) {
+        if (entries[0].isIntersecting) {
+            schemaCols.forEach(function(col, i) {
+                setTimeout(function() {
+                    col.classList.add('visible');
+                }, 200 + i * 150);
+            });
+            schemaObserver.disconnect();
+        }
+    }, { threshold: 0.3 });
+
+    if (schemaCols.length) schemaObserver.observe(schemaCols[0].parentElement);
+
+    /* ── Entity Connector Lines ── */
+    var entityDemo = document.getElementById('entity-demo');
+    var entityObserver = new IntersectionObserver(function(entries) {
+        if (entries[0].isIntersecting) {
+            var lines = entityDemo.querySelectorAll('.connector-line');
+            lines.forEach(function(line, i) {
+                setTimeout(function() {
+                    line.classList.add('visible');
+                }, 300 + i * 200);
+            });
+            setTimeout(function() {
+                var fill = document.getElementById('confidence-fill');
+                if (fill) fill.classList.add('visible');
+            }, 1000);
+            entityObserver.disconnect();
+        }
+    }, { threshold: 0.3 });
+
+    if (entityDemo) entityObserver.observe(entityDemo);
+
+    /* ── Smooth nav background ── */
+    var nav = document.querySelector('.nav');
+    window.addEventListener('scroll', function() {
+        if (window.scrollY > 60) {
+            nav.style.borderBottomColor = 'var(--border)';
+        } else {
+            nav.style.borderBottomColor = 'var(--border-dim)';
+        }
+    }, { passive: true });
+
+    /* ── Smooth scroll for anchor links ── */
+    document.querySelectorAll('a[href^="#"]').forEach(function(a) {
+        a.addEventListener('click', function(e) {
+            e.preventDefault();
+            var target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
+})();
+</script>
+
+</body>
+</html>

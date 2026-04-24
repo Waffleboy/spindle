@@ -8,7 +8,7 @@ import json
 
 from sqlalchemy.orm import Session
 
-from backend.models import Entity, EntityResolution, Extraction, TaxonomySchema
+from backend.models import Document, Entity, EntityResolution, Extraction, TaxonomySchema
 from backend.pipeline.llm import llm_call, parse_json_response
 
 
@@ -52,6 +52,18 @@ async def resolve_entities(
     if not extractions:
         return []
 
+    # Build doc_id -> filename lookup for richer LLM context
+    doc_ids = {ext.document_id for ext in extractions}
+    doc_filename_map = {}
+    for doc in db.query(Document).filter(Document.id.in_(doc_ids)).all():
+        doc_filename_map[doc.id] = doc.original_filename
+
+    # Build doc_id -> set of co-occurring entity values for context
+    doc_entities: dict[str, set[str]] = {}
+    for ext in extractions:
+        if ext.raw_value:
+            doc_entities.setdefault(ext.document_id, set()).add(ext.raw_value)
+
     # Build mentions list: {value, document_id, dimension_name}
     mentions = []
     for ext in extractions:
@@ -92,16 +104,32 @@ async def resolve_entities(
     if not mentions:
         return []
 
-    # Build the prompt with all entity mentions
-    mention_list = "\n".join(
-        f"- \"{m['value']}\" (from document {m['document_id']}, dimension: {m['dimension_name']})"
-        for m in mentions
-    )
+    # Build the prompt with all entity mentions, including document filename
+    # and co-occurring entities for better resolution context
+    mention_lines = []
+    for m in mentions:
+        filename = doc_filename_map.get(m["document_id"], m["document_id"])
+        co_entities = doc_entities.get(m["document_id"], set()) - {m["value"]}
+        context_parts = [f"from document \"{filename}\"", f"dimension: {m['dimension_name']}"]
+        if co_entities:
+            context_parts.append(f"co-occurring entities in same doc: {', '.join(sorted(co_entities))}")
+        mention_lines.append(f"- \"{m['value']}\" ({'; '.join(context_parts)})")
+
+    mention_list = "\n".join(mention_lines)
 
     prompt = (
         "Below is a list of entity mentions extracted from multiple documents:\n\n"
         f"{mention_list}\n\n"
         "Group these entity mentions that refer to the same real-world entity. "
+        "Pay close attention to:\n"
+        "- Name variations: Asian names may have surname/given-name swaps "
+        "(e.g. 'Tan Kim Bock' vs 'Bock Kim Tan'), Chinese name romanization "
+        "variants (e.g. 'William Liew' vs 'Liew Wei Liam'), or Malay name "
+        "abbreviations (e.g. 'Ahmad Rizwan bin Hassan' vs 'Rizwan Ahmad').\n"
+        "- Co-occurring entities: if two name variants appear in documents about "
+        "the same company in the same role, they are very likely the same person.\n"
+        "- Different people with the same surname: verify by checking document "
+        "context — different companies or roles means different entities.\n\n"
         "For each group, provide:\n"
         "- canonical_name: the best/most complete name for the entity\n"
         "- entity_type: the type of entity (e.g., person, company, location, product)\n"
@@ -112,8 +140,12 @@ async def resolve_entities(
     )
 
     system = (
-        "You are an entity resolution expert. Group entity mentions that refer "
-        "to the same real-world entity. Be careful with similar but distinct entities. "
+        "You are an entity resolution expert specializing in multi-document analysis. "
+        "Group entity mentions that refer to the same real-world entity. "
+        "Be especially alert to Asian name ordering variations (surname first vs last) "
+        "and abbreviations. Use document filenames and co-occurring entities as context "
+        "clues. Be careful with similar but distinct entities — same surname does not "
+        "mean same person if they appear in different company contexts. "
         "Assign high confidence to clear matches and lower confidence to uncertain ones."
     )
 
