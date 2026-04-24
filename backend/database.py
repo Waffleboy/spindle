@@ -29,6 +29,9 @@ def init_db() -> None:
         if "source_text" not in cols:
             conn.execute(text("ALTER TABLE documents ADD COLUMN source_text TEXT"))
             conn.commit()
+        if "primary_entity_id" not in cols:
+            conn.execute(text("ALTER TABLE documents ADD COLUMN primary_entity_id TEXT REFERENCES entities(id)"))
+            conn.commit()
 
         contra_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(contradictions)")).fetchall()}
         if contra_cols and "reason" not in contra_cols:

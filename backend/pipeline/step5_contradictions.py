@@ -8,7 +8,7 @@ from collections import defaultdict
 
 from sqlalchemy.orm import Session
 
-from backend.models import Contradiction, Document, Entity, EntityResolution, Extraction, TaxonomySchema
+from backend.models import Contradiction, Document, Entity, Extraction, TaxonomySchema
 from backend.pipeline.llm import llm_call, parse_json_response
 
 
@@ -16,41 +16,18 @@ def _build_primary_entity_map(
     doc_ids: set[str],
     db: Session,
 ) -> dict[str, str]:
-    """Map each document to its primary (company) entity.
+    """Map each document to its primary (subject) entity.
 
-    Picks the company-type entity with highest confidence for each document.
-    Falls back to the highest-confidence entity of any type.
+    Reads Document.primary_entity_id which is set by Step 4 (entity
+    resolution) based on the document's own entity-type extractions.
     Returns dict of doc_id -> entity_id.
     """
-    resolutions = (
-        db.query(EntityResolution)
-        .filter(EntityResolution.document_id.in_(doc_ids))
-        .all()
-    )
-    if not resolutions:
-        return {}
-
-    entity_ids = {er.entity_id for er in resolutions}
-    entities = db.query(Entity).filter(Entity.id.in_(entity_ids)).all()
-    entity_type_map = {e.id: e.entity_type for e in entities}
-
-    # For each doc, find the best entity (prefer company type)
-    doc_candidates: dict[str, list[tuple[str, float, bool]]] = defaultdict(list)
-    for er in resolutions:
-        is_company = entity_type_map.get(er.entity_id, "").lower() in (
-            "company", "organisation", "organization",
-        )
-        doc_candidates[er.document_id].append(
-            (er.entity_id, er.confidence, is_company)
-        )
-
-    result: dict[str, str] = {}
-    for doc_id, candidates in doc_candidates.items():
-        # Sort: company entities first, then by confidence descending
-        candidates.sort(key=lambda c: (c[2], c[1]), reverse=True)
-        result[doc_id] = candidates[0][0]
-
-    return result
+    docs = db.query(Document).filter(Document.id.in_(doc_ids)).all()
+    return {
+        doc.id: doc.primary_entity_id
+        for doc in docs
+        if doc.primary_entity_id is not None
+    }
 
 
 async def detect_contradictions(

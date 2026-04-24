@@ -237,4 +237,48 @@ async def resolve_entities(
     for ent in entities:
         db.refresh(ent)
 
+    # Assign primary_entity_id on each document.
+    # Use the document's own entity-type extractions (now with resolved_value set)
+    # to pick the best subject entity.  Singular entity dims (e.g. COMPANY_NAME)
+    # are preferred over entity_list dims (e.g. BOARD_MEMBERS), then company-type
+    # entities over others, then highest confidence.
+    dim_type_map: dict[str, str] = {
+        d["name"]: d["expected_type"]
+        for d in taxonomy.dimensions
+        if d["expected_type"] in ("entity", "entity_list")
+    }
+    entity_by_name: dict[str, Entity] = {e.canonical_name: e for e in entities}
+
+    all_entity_extractions = (
+        db.query(Extraction)
+        .filter(
+            Extraction.taxonomy_schema_id == taxonomy.id,
+            Extraction.dimension_name.in_(dim_type_map.keys()),
+        )
+        .all()
+    )
+
+    doc_candidates: dict[str, list[tuple[Entity, float, bool, bool]]] = {}
+    for ext in all_entity_extractions:
+        name = ext.resolved_value or ext.raw_value
+        if not name:
+            continue
+        entity = entity_by_name.get(name)
+        if not entity:
+            continue
+        is_company = entity.entity_type.lower() in ("company", "organisation", "organization")
+        is_singular = dim_type_map.get(ext.dimension_name) == "entity"
+        doc_candidates.setdefault(ext.document_id, []).append(
+            (entity, ext.confidence, is_company, is_singular)
+        )
+
+    for doc_id, candidates in doc_candidates.items():
+        candidates.sort(key=lambda c: (c[3], c[2], c[1]), reverse=True)
+        best_entity = candidates[0][0]
+        doc = db.query(Document).filter(Document.id == doc_id).first()
+        if doc:
+            doc.primary_entity_id = best_entity.id
+
+    db.commit()
+
     return entities

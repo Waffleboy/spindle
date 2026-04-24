@@ -36,6 +36,7 @@ class Document(Base):
     detected_doc_type = Column(Text, nullable=True)
     page_count = Column(Integer, nullable=True)
     report_date = Column(DateTime, nullable=True)
+    primary_entity_id = Column(String, ForeignKey("entities.id"), nullable=True)
     uploaded_at = Column(DateTime, default=_utcnow, nullable=False)
     processed_at = Column(DateTime, nullable=True)
 
@@ -43,6 +44,7 @@ class Document(Base):
     chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
     extractions = relationship("Extraction", back_populates="document", cascade="all, delete-orphan")
     entity_resolutions = relationship("EntityResolution", back_populates="document", cascade="all, delete-orphan")
+    primary_entity = relationship("Entity", foreign_keys=[primary_entity_id])
 
 
 class TaxonomySchema(Base):
